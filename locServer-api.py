@@ -1,8 +1,8 @@
 # -- coding: utf-8 --
 """
-ETRI STRONG
-2021. 5 H4Tech
-    STRONG-KSOC
+ETRI Localization
+2022. 1 H4Tech
+    locServer-api
     하나의 client 만 지원한다. 
 
     Postgresql DB API REST 인터페이스

@@ -1,8 +1,8 @@
 # -- coding: utf-8 --
 """
-ETRI STRONG
-2021. 5 H4Tech
-    STRONG-KSOC
+ETRI Localization
+2022. 1 H4Tech
+    locweb-api
     하나의 client 만 지원한다. 
 
     Postgresql DB API REST 인터페이스
@@ -11,6 +11,9 @@ ETRI STRONG
 """
 
 
+from inspect import getfile
+import site
+from typing import Tuple
 from flask_restful import Resource, reqparse, Api
 from flask import request
 from flask import Flask
@@ -18,6 +21,7 @@ from flask import Response
 from flask_cors import CORS
 import json
 import psycopg2
+import configparser
 
 #import cv2
 import numpy as np
@@ -31,6 +35,8 @@ import datetime
 from datetime import timedelta, date
 from dateutil.parser import *
 import logging, sys, io
+from pathlib import Path
+
 
 sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding='utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.detach(), encoding='utf-8')
@@ -66,93 +72,123 @@ FILEPATH_UPLOAD_INGESTION_IMAGE = 'static/img/ingestphotoupload'
 
 ##########################################
 # Postgresql API
-
 #host = 'dev.h4tech.co.kr'
 #port = '45432'
 
-host = '192.168.219.204'
-port = '5432'
+
+db_ip = '192.168.219.204'
+db_port = '5432'
+db_user = 'postgres'
+db_pw = 'h42020)('
+db_name = 'etri_loc_v1'
 
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'prj_strong_ksoc',
-        'USER': 'postgres',
-        'PASSWORD': 'h42020)(',
-        'HOST': host,     # 192.168.219.204
-        'PORT': port,                # '5432',     
-    }
-}
+TB_SITE = 'tb_site'	#사이트(지역)
+TB_BUILDING = 'tb_building'	
+TB_COLLECTION = 'tb_collection'	#수집
+TB_COLLECTION_STATUS = 'tb_collection_status'	#수집상황
+TB_COLLECTION_POSTPROC = 'tb_collection_postproc'	#수집데이터 후처리
+	
+TB_TRAINING_DATASET = 'tb_training_dataset'	#학습데이터셋
+TB_TRAINING = 'tb_training'	#학습수행 기록 테이블
+TB_LOC_MODEL = 'tb_loc_model'	#영상측위 학습 모델 관리
 
 
-TB_USER = "tb_user"
+#########################################################################################
 
-TB_PT_ITEMS = "tb_pt_items"
-TB_PT_ITEMS4GAME = "tb_pt_items4game"
-TB_PT_WEEKLY_PERSONAL = "tb_pt_weekly_personal"
-TB_PT_WEEKLY_PLAN = "tb_pt_weekly_plan"
-TB_PT_WEEKLY_PLAN_DATA = "tb_pt_weekly_plan_data"
+def dbconfig_read(config):
+    global db_ip, db_port, db_name, db_pw
+    
+    db_ip = config['DB']['ip']
+    db_port = config['DB']['port']
+    db_name = config['DB']['dbname']
+    db_pw = config['DB']['pw']
+    
+def kafkaconfig_read(config):
+    global kafka_url
+    
+    kafka_url = config['kafka']['kafka_url']
+    kafka_topic = config['kafka']['kafka_topic']
+    
+def config_read():
+    
+    # 설정파일 읽기
+    config = configparser.ConfigParser()    
+    config.read('locWeb-api_config.ini', encoding='utf-8') 
 
-TB_GAMES = "tb_games"
-
-TB_PHYSICAL_MEASURE_CAT = "tb_physical_measure_cat"
-TB_PHYSICAL_MEASURE_VALUES = "tb_physical_measure_values"
-TB_PHYSICAL_MEASURE_ITEMS = "tb_physical_measure_items"
-TB_PHYSICAL_MEASURE_PERSONAL = "tb_physical_measure_personal"
-
-USER_TYPE = {'admin':0, 'coach':1, 'player':10}
-DAYOFWEEK = {'일요일':6, '월요일':0, '화요일':1, '수요일':2, '목요일':3, '금요일':4, '토요일':5,
-    '일':6, '월':0, '화':1, '수':2, '목':3, '금':4, '토':5}
-DAYOFWEEK2STR = {'6':'일요일', '0':'월요일', '1':'화요일', '2':'수요일', '3':'목요일', '4':'금요일', '5':'토요일',}
-
-DAYTIME = {'당일':0, '조조':1, '오전':2, '오후':3, '야간':4}
-DAYTIME2STR = {'0':'당일', '1':'조조', '2':'오전', '3':'오후', '4':'야간'}
+    # 설정파일의 색션 확인
+    # config.sections())
+    dbconfig_read(config)
+    #kafkaconfig_read(config)
+    
+config_read()
+host = db_ip
+port = db_port
+print('db ip:port = {}:{}'.format(db_ip, db_port))
+#print('kafka broker = ', kafka_url)
 
 ############################################################################################################
-
 # H4T Database server - WAN
-# conn = psycopg2.connect(host=host, dbname='prj_strong_ksoc', user='postgres', \
-#     password='h42020)(', port=port)
-# print(conn)
+def connectDB():
+    conn = psycopg2.connect(host=db_ip, dbname=db_name, user=db_user, \
+        password=db_pw, port=db_port)
+    print(conn)
+    return conn
 
 # local
 #conn = psycopg2.connect(host='192.168.219.204', dbname='prj_strong_ksoc', user='postgres', password='h42020)(', port='5432')
 
-# cur = conn.cursor() # 성능문제 고려해야 할 듯
+conn = connectDB()
+cur = conn.cursor() # 성능문제 고려해야 할 듯
 
-# def connectDBIfClosed():
-#     global conn
-#     global cur
-#     if conn == None or conn.closed == 1:
-#         logger.warning('DB Connection closed.') 
+def connectDBIfClosed():
+    global conn
+    global cur
+    if conn == None or conn.closed == 1:
+        logger.warning('DB Connection closed.') 
 
-#         try:
-#             conn = psycopg2.connect(host=host, dbname='prj_strong_ksoc', user='postgres', \
-#                 password='h42020)(', port=port)
-#             #print('reconnected DB....')  
-#             logger.info('reconnected DB....1') 
-#         except Exception as e:
-#             logger.error('DB connection 1 ' + e)
-#             return None
+        try:
+            conn = connectDB()
+            #print('reconnected DB....')  
+            logger.info('reconnected DB....1') 
+        except Exception as e:
+            logger.error('DB connection 1 ' + e)
+            return None
         
-#     try:
-#         cur = conn.cursor() # 성능문제 고려해야 할 듯
-#     except Exception as e:
-#         try:
-#             conn = psycopg2.connect(host=host, dbname='prj_strong_ksoc', user='postgres', \
-#                 password='h42020)(', port=port)
-#             #print('reconnected DB....')  
-#             logger.info('reconnected DB....2') 
-#             cur = conn.cursor() # 성능문제 고려해야 할 듯
-#         except Exception as e:
-#             logger.error('DB connection 2 ' + e)
-#             return None     
+    try:
+        cur = conn.cursor() # 성능문제 고려해야 할 듯
+    except Exception as e:
+        try:
+            conn = connectDB()
+            #print('reconnected DB....')  
+            logger.info('reconnected DB....2') 
+            cur = conn.cursor() # 성능문제 고려해야 할 듯
+        except Exception as e:
+            logger.error('DB connection 2 ' + e)
+            return None     
 
-#     return cur
-
-
+    return cur
 ############################################################################################################
+# util
+def getFileInfo(fpath):
+    fname = os.path.basename(fpath)
+    info = fpath.stat()
+    sz = info.st_size
+    if sz >= 1000000:
+        sz = sz / 1000000.
+        sz = f'{sz:,.1f}MB'
+    elif sz >= 100:
+        sz = sz / 1000.
+        sz = f'{sz:,.1f}KB'
+    else:
+        sz = f'{sz:}B'
+    
+    return {'name': fname, 'size':sz}
+
+
+
+
+############################################################################################################    
 def im2json(im):
     """Convert a Numpy array to JSON string"""
     imdata = pickle.dumps(im)
@@ -554,6 +590,251 @@ class HelloAPI(Resource):
         'Access-Control-Allow-Methods' : 'GET' }
 
 
+def makeWhereClause(site_id, building_id, floor):
+    site_where = ' site_id = %s ' if site_id != '%' else ' site_id LIKE %s '
+    building_where = ' building_id = %s ' if building_id != '%' else ' building_id LIKE %s '
+    floor_where = ' floor = %s ' if floor != '%' else ' floor LIKE %s '
+    return f' WHERE {site_where} and {building_where} and {floor_where} '
+
+########################################################################################################
+# Collect 측위자원수집관리
+class CollectGetDatasetList(Resource):
+    
+    
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+        #try:
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('site_id', required=False, type=str, help='site_id')
+        parser.add_argument('building_id', required=False, type=str, help='building_id')
+        parser.add_argument('floor', required=False, type=str, help='floor')
+        args = parser.parse_args()
+        logger.info('args = {}'.format(args))
+        site_id = args.get('site_id', '%')
+        if site_id == '*': site_id = '%'
+        logger.info("site_id = " + site_id)
+        
+        building_id = args.get('building_id', '%')
+        if building_id == '*': building_id = '%'
+        logger.info("building_id = " + building_id)
+        
+        floor = args.get('floor', '%')
+        if floor == '*': floor = '%'
+        logger.info("floor = " + floor)        
+        
+        cur = connectDBIfClosed()
+        whereclause = makeWhereClause(site_id, building_id, floor)
+        print(whereclause)
+        query = 'SELECT idx, scenario_name, site_id, building_id, floor, route_wp, dt_start, dt_end, gt, user_name, phonemodel FROM '\
+            + TB_COLLECTION + whereclause + ' ORDER BY dt_start DESC '
+        print('query = ', query)
+        cur.execute(query, (site_id, building_id, floor,))
+        records = cur.fetchall()
+        print('records =========>', records)
+
+        if len(records)==0:
+            return makeErrorResponseMsgResponse('no data')
+        data_list = []
+        for r in records:
+            dt_str = datetime2str(r[6])
+            d = {'idx':str(r[0]), 'scenario_name':r[1], 'site_id':r[2], 'building_id':r[3], 'floor':r[4],
+                 'route_wp':r[5], 'dt_start':dt_str}
+            data_list.append(d)
+            
+        data = {'result':'Y', 'data_list':data_list}
+        res = json.dumps(data, ensure_ascii=False).encode('utf8')
+        print("response data = ", data)
+        return Response(res, content_type='application/json; charset=utf-8')
+        
+        # except Exception as e:
+        #     logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+        #     return makeErrorResponseMsgResponse(str(e)) 
+  
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+
+class CollectPPGetDatasetList(Resource):
+    
+    
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+        #try:
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('site_id', required=False, type=str, help='site_id')
+        parser.add_argument('building_id', required=False, type=str, help='building_id')
+        parser.add_argument('floor', required=False, type=str, help='floor')
+        args = parser.parse_args()
+        logger.info('args = {}'.format(args))
+        site_id = args.get('site_id', '%')
+        if site_id == '*': site_id = '%'
+        logger.info("site_id = " + site_id)
+        
+        building_id = args.get('building_id', '%')
+        if building_id == '*': building_id = '%'
+        logger.info("building_id = " + building_id)
+        
+        floor = args.get('floor', '%')
+        if floor == '*': floor = '%'
+        logger.info("floor = " + floor)        
+        
+        cur = connectDBIfClosed()
+        whereclause = makeWhereClause(site_id, building_id, floor)
+        print(whereclause)
+        query = 'SELECT idx, scenario_name, site_id, building_id, floor, route_wp, dt_start, ppdirectory FROM '\
+            + TB_COLLECTION + whereclause + ' and ppdirectory IS NOT NULL '+ ' ORDER BY dt_start DESC '
+        print('query = ', query)
+        cur.execute(query, (site_id, building_id, floor,))
+        records = cur.fetchall()
+        print('records =========>', records)
+
+        if len(records)==0:
+            return makeErrorResponseMsgResponse('no data')
+        data_list = []
+        for r in records:
+            dt_str = datetime2str(r[6])
+            d = {'idx':str(r[0]), 'scenario_name':r[1], 'site_id':r[2], 'building_id':r[3], 'floor':r[4],
+                 'route_wp':r[5], 'dt_start':dt_str, 'ppdirectory': r[7]}
+            data_list.append(d)
+            
+        data = {'result':'Y', 'data_list':data_list}
+        res = json.dumps(data, ensure_ascii=False).encode('utf8')
+        print("response data = ", data)
+        return Response(res, content_type='application/json; charset=utf-8')
+        
+        # except Exception as e:
+        #     logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+        #     return makeErrorResponseMsgResponse(str(e)) 
+  
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+
+
+class CollectGetDatasetFilter(Resource):
+    
+    
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+        #try:
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('site_id', required=True, type=str, help='site_id')
+        parser.add_argument('building_id', required=False, type=str, help='building_id')
+        args = parser.parse_args()
+        logger.info('args = {}'.format(args))
+        site_id = args.get('site_id', '%')
+        if site_id == '*': site_id = '%'
+        site_id = '%'   # 우선 all 로 고정
+        logger.info("site_id = " + site_id)
+        
+        # building_id = args.get('building_id', '%')
+        # if building_id == '*': building_id = '%'
+        # logger.info("building_id = " + building_id)      
+        
+        cur = connectDBIfClosed()
+        whereclause = f' WHERE site_id LIKE %s'
+        print(whereclause)
+        query = 'SELECT building_id FROM '\
+            + TB_COLLECTION + whereclause + ' ORDER BY building_id ASC '
+        print('query = ', query)
+        cur.execute(query, (site_id,))
+        records = cur.fetchall()
+        print('records =========>', records)
+
+        building_list = []
+        building_set = set([])
+        if len(records) > 0:
+            for r in records:
+                building_list.append(r[0])
+            building_set = set(building_list)
+            building_list = list(building_set)
+
+            
+        data = {'result':'Y', 'building_list':building_list}
+        res = json.dumps(data, ensure_ascii=False).encode('utf8')
+        print("response data = ", data)
+        return Response(res, content_type='application/json; charset=utf-8')
+        
+        # except Exception as e:
+        #     logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+        #     return makeErrorResponseMsgResponse(str(e)) 
+  
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+ground_truth_name = {'A': 'ARCore', 'B': 'Backpack'}
+class CollectGetDatasetDetails(Resource):
+    
+    
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+        #try:
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('idx', required=True, type=str, help='idx')
+        args = parser.parse_args()
+        logger.info('args = {}'.format(args))
+        idx = args.get('idx')
+        logger.info("idx = " + idx)
+           
+        
+        cur = connectDBIfClosed()
+        query = 'SELECT idx, scenario_name, site_id, building_id, floor, route_wp, dt_start, dt_end, gt, user_name, phonemodel FROM '\
+            + TB_COLLECTION + ' WHERE idx = %s'
+        print('query = ', query)
+        cur.execute(query, (idx,))
+        r = cur.fetchone()
+        print('record =========>', r)
+
+        if r == None:
+            return makeErrorResponseMsgResponse('idx error')
+
+        dt_str = datetime2str(r[6])
+        dt_str_end = datetime2str(r[7])
+        gt = ground_truth_name[r[8].strip()]
+        details = f'Scenario: {r[1]},\nSite: {r[2]},\nBuilding: {r[3]},\nFloor: {r[4]},\nRoute(waypoints): {r[5]},\n\
+            Start time: {dt_str},\nEnd time: {dt_str_end},\nUser: {r[9]},\nGround Truth: {gt},\nPhone Model: {r[10]},\n'
+
+        # d = {'idx':str(r[0]), 'scenario_name':r[1], 'site_id':r[2], 'building_id':r[3], 'floor':r[4],
+        #         'route_wp':r[5], 'dt_start':dt_str, 'dt_end':dt_str_end, 'ppdirectory': r[7]}
+        
+        finfolist = []
+        dataset_path = "."
+        for path in Path(dataset_path).iterdir():
+            finfo = getFileInfo(path)
+            finfolist.append(finfo)
+            # info = path.stat()
+            # print(info.st_mtime)
+    
+        data = {'result':'Y', 'details':details, 'file_list':finfolist}
+        # data.update(details)
+        res = json.dumps(data, ensure_ascii=False).encode('utf8')
+        print("response data = ", data)
+        return Response(res, content_type='application/json; charset=utf-8')
+        
+        # except Exception as e:
+        #     logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+        #     return makeErrorResponseMsgResponse(str(e)) 
+  
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+
     
 app = Flask('STRONG for KSOC DB API REST Interface')
 app.config['JSON_AS_ASCII'] = False # 한글 깨짐 문제 해결
@@ -569,7 +850,23 @@ api = Api(app)
 api.add_resource(Hello, '/')
 api.add_resource(HelloAPI, '/api')
 
-## 기본 API
+## 측위자원수집관리 API
+#측위자원 수집데이터세트 목록 가져오기  - POST
+api.add_resource(CollectGetDatasetList, '/api/collect/get-dataset-list')
+#측위자원 후처리데이터세트 목록 가져오기  - POST
+api.add_resource(CollectPPGetDatasetList, '/api/collect/get-ppdataset-list')
+#측위자원 수집데이터세트 필터 정보 가져오기  - POST					
+api.add_resource(CollectGetDatasetFilter, '/api/collect/get-dataset-filter')
+#측위자원 수집데이터세트 상세 정보 가져오기  - POST									
+api.add_resource(CollectGetDatasetDetails, '/api/collect/get-dataset-details')
+
+'''
+#측위자원 수집데이터세트 삭제하기  - POST					
+api.add_resource(CollectDeleteDataset, '/api/collect/delete-dataset')
+#측위자원 후처리데이터세트 삭제하기  - POST					
+api.add_resource(CollectDeletePPDataset, '/api/collect/delete-ppdataset')
+'''
+
 
 ## 영양정보 사진업로드
 api.add_resource(NutriIngestionDetailImage, '/upload')    # 영양섭취 사진
@@ -614,6 +911,5 @@ if __name__ == '__main__':
     
     print(f'====>{app.url_map}')
 
-    app.run(host='192.168.0.41', port=8889, debug=True, threaded=False)
-    
-    print(f'====>{app.url_map}')
+    app.run(host='localhost', port=8091, debug=True, threaded=False)
+
