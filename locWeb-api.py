@@ -43,12 +43,12 @@ sys.stderr = io.TextIOWrapper(sys.stderr.detach(), encoding='utf-8')
 
 #logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
 
-logger = logging.getLogger("strong-api")
+logger = logging.getLogger("locWeb-api")
 logger.setLevel(logging.INFO)
 stream_hander = logging.StreamHandler()
 logger.addHandler(stream_hander)
 
-logging_filename = 'strong-api.log'
+logging_filename = 'locWeb-api.log'
 print("Logging filename = ", logging_filename)
 
 fh = logging.FileHandler(logging_filename)
@@ -633,9 +633,9 @@ class CollectGetDatasetList(Resource):
         records = cur.fetchall()
         print('records =========>', records)
 
-        if len(records)==0:
-            return makeErrorResponseMsgResponse('no data')
         data_list = []
+        # if len(records)==0:
+        #     return makeErrorResponseMsgResponse('no data')
         for r in records:
             dt_str = datetime2str(r[6])
             d = {'idx':str(r[0]), 'scenario_name':r[1], 'site_id':r[2], 'building_id':r[3], 'floor':r[4],
@@ -756,7 +756,7 @@ class CollectGetDatasetFilter(Resource):
             for r in records:
                 building_list.append(r[0])
             building_set = set(building_list)
-            building_list = list(building_set)
+            building_list = sorted(list(building_set))
 
             
         data = {'result':'Y', 'building_list':building_list}
@@ -799,13 +799,13 @@ class CollectGetDatasetDetails(Resource):
         print('record =========>', r)
 
         if r == None:
-            return makeErrorResponseMsgResponse('idx error')
+            return makeErrorResponseMsgResponse('no record')
 
         dt_str = datetime2str(r[6])
         dt_str_end = datetime2str(r[7])
         gt = ground_truth_name[r[8].strip()]
-        details = f'Scenario: {r[1]},\nSite: {r[2]},\nBuilding: {r[3]},\nFloor: {r[4]},\nRoute(waypoints): {r[5]},\n\
-            Start time: {dt_str},\nEnd time: {dt_str_end},\nUser: {r[9]},\nGround Truth: {gt},\nPhone Model: {r[10]},\n'
+        details = f'Scenario: {r[1]},\nSite: {r[2]},\nBuilding: {r[3]},\nFloor: {r[4]},\nRoute(waypoints): {r[5]},\n' + \
+            f'Start time: {dt_str},\nEnd time: {dt_str_end},\nUser: {r[9]},\nGround Truth: {gt},\nPhone Model: {r[10]},\n'
 
         # d = {'idx':str(r[0]), 'scenario_name':r[1], 'site_id':r[2], 'building_id':r[3], 'floor':r[4],
         #         'route_wp':r[5], 'dt_start':dt_str, 'dt_end':dt_str_end, 'ppdirectory': r[7]}
@@ -835,6 +835,791 @@ class CollectGetDatasetDetails(Resource):
         'Access-Control-Allow-Methods' : 'POST' }
 
 
+class CollectDeleteDataset(Resource):
+    
+    
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+        #try:
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('idx', required=True, type=str, help='idx')
+        args = parser.parse_args()
+        logger.info('args = {}'.format(args))
+        idx = args.get('idx')
+        logger.info("idx = " + idx)
+           
+        
+        cur = connectDBIfClosed()
+        query = 'SELECT ppdirectory FROM '\
+            + TB_COLLECTION + ' WHERE idx = %s'
+        print('query = ', query)
+        cur.execute(query, (idx,))
+        r = cur.fetchone()
+        if r == None: return makeErrorResponseMsgResponse('no record')
+        
+        
+        query = 'DELETE FROM ' + TB_COLLECTION + ' WHERE idx = %s'
+        print('query = ', query)
+        cur.execute(query, (idx,))
+        conn.commit()
+    
+        data = {'result':'Y'}
+        # data.update(details)
+        res = json.dumps(data, ensure_ascii=False).encode('utf8')
+        print("response data = ", data)
+        return Response(res, content_type='application/json; charset=utf-8')
+        
+        # except Exception as e:
+        #     logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+        #     return makeErrorResponseMsgResponse(str(e)) 
+  
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+
+class CollectDeletePPDataset(Resource):
+    
+    
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+        #try:
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('idx', required=True, type=str, help='idx')
+        args = parser.parse_args()
+        logger.info('args = {}'.format(args))
+        idx = args.get('idx')
+        logger.info("idx = " + idx)
+           
+        
+        cur = connectDBIfClosed()
+        query = 'SELECT ppdirectory FROM '\
+            + TB_COLLECTION + ' WHERE idx = %s'
+        print('query = ', query)
+        cur.execute(query, (idx,))
+        r = cur.fetchone()
+        if r == None: return makeErrorResponseMsgResponse('no record')
+        
+        query = 'UPDATE ' + TB_COLLECTION + ' SET ppdirectory=%s WHERE idx = %s'
+        print('query = ', query)
+        cur.execute(query, (None, idx,))
+        conn.commit()
+    
+        data = {'result':'Y'}
+        # data.update(details)
+        res = json.dumps(data, ensure_ascii=False).encode('utf8')
+        print("response data = ", data)
+        return Response(res, content_type='application/json; charset=utf-8')
+        
+        # except Exception as e:
+        #     logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+        #     return makeErrorResponseMsgResponse(str(e)) 
+  
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+
+
+class CollectPostProcessing(Resource):
+    
+    
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+        #try:
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('idx', required=True, type=str, help='idx')
+        args = parser.parse_args()
+        logger.info('args = {}'.format(args))
+        idx = args.get('idx')
+        logger.info("idx = " + idx)
+           
+        
+        cur = connectDBIfClosed()
+        query = 'SELECT ppdirectory FROM '\
+            + TB_COLLECTION + ' WHERE idx = %s'
+        print('query = ', query)
+        cur.execute(query, (idx,))
+        r = cur.fetchone()
+        if r == None: return makeErrorResponseMsgResponse('no record')
+        
+        # query = 'UPDATE ' + TB_COLLECTION + ' SET ppdirectory=%s WHERE idx = %s'
+        # print('query = ', query)
+        # cur.execute(query, (None, idx,))
+        # conn.commit()
+    
+        data = {'result':'Y'}
+        # data.update(details)
+        res = json.dumps(data, ensure_ascii=False).encode('utf8')
+        print("response data = ", data)
+        return Response(res, content_type='application/json; charset=utf-8')
+        
+        # except Exception as e:
+        #     logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+        #     return makeErrorResponseMsgResponse(str(e)) 
+  
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+
+
+class CollectPostProcStatus(Resource):
+    
+
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+
+        try:
+            parser = reqparse.RequestParser()
+            parser.add_argument('idx', required=True, type=str, help='idx')
+            args = parser.parse_args()
+            logger.info('args = {}'.format(args))
+            idx = args['idx']
+            logger.info("idx = " + idx)
+        
+            #dummy
+            data = {'result':'Y', 'status':'100'}
+
+            #data = {'result':'Y'}
+            # data.update(details)
+            res = json.dumps(data, ensure_ascii=False).encode('utf8')
+            print("response data = ", data)
+            return Response(res, content_type='application/json; charset=utf-8')
+
+        except Exception as e:
+            logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+            return makeErrorResponseMsgResponse(str(e)) 
+
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+
+
+########################################################################################################
+# Training  학습 관리
+
+
+class TrainingGetDatasetFilter(Resource):
+    
+    
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+        #try:
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('site_id', required=True, type=str, help='site_id')
+        parser.add_argument('building_id', required=False, type=str, help='building_id')
+        args = parser.parse_args()
+        logger.info('args = {}'.format(args))
+        site_id = args.get('site_id', '%')
+        if site_id == '*': site_id = '%'
+        site_id = '%'   # 우선 all 로 고정
+        logger.info("site_id = " + site_id)
+        
+        # building_id = args.get('building_id', '%')
+        # if building_id == '*': building_id = '%'
+        # logger.info("building_id = " + building_id)      
+        
+        cur = connectDBIfClosed()
+        whereclause = f' WHERE site_id LIKE %s'
+        print(whereclause)
+        query = 'SELECT DISTINCT building_id FROM '\
+            + TB_TRAINING_DATASET + whereclause + ' ORDER BY building_id ASC '
+        print('query = ', query)
+        cur.execute(query, (site_id,))
+        records = cur.fetchall()
+        print('records =========>', records)
+
+        building_list = []
+        building_set = set([])
+        if len(records) > 0:
+            for r in records:
+                building_list.append(r[0])
+            building_set = set(building_list)
+            building_list = sorted(list(building_set))
+
+            
+        data = {'result':'Y', 'building_list':building_list}
+        res = json.dumps(data, ensure_ascii=False).encode('utf8')
+        print("response data = ", data)
+        return Response(res, content_type='application/json; charset=utf-8')
+        
+        # except Exception as e:
+        #     logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+        #     return makeErrorResponseMsgResponse(str(e)) 
+  
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+
+class TrainingGetDatasetList(Resource):
+    
+    
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+        #try:
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('site_id', required=False, type=str, help='site_id')
+        parser.add_argument('building_id', required=False, type=str, help='building_id')
+        parser.add_argument('floor', required=False, type=str, help='floor')
+        args = parser.parse_args()
+        logger.info('args = {}'.format(args))
+        site_id = args.get('site_id', '%')
+        if site_id == '*': site_id = '%'
+        logger.info("site_id = " + site_id)
+        
+        building_id = args.get('building_id', '%')
+        if building_id == '*': building_id = '%'
+        logger.info("building_id = " + building_id)
+        
+        floor = args.get('floor', '%')
+        if floor == '*': floor = '%'
+        logger.info("floor = " + floor)        
+        
+        cur = connectDBIfClosed()
+        whereclause = makeWhereClause(site_id, building_id, floor)
+        print(whereclause)
+        query = 'SELECT idx, site_id, building_id, floor, dt FROM '\
+            + TB_TRAINING_DATASET + whereclause + ' ORDER BY dt DESC '
+        print('query = ', query)
+        cur.execute(query, (site_id, building_id, floor,))
+        records = cur.fetchall()
+        print('records =========>', records)
+
+        data_list = []
+        #if len(records) > 0:
+        for r in records:
+            dt_str = datetime2str(r[4])
+            d = {'idx':str(r[0]), 'site_id':r[1], 'building_id':r[2], 'floor':r[3], 'dt':dt_str}
+            data_list.append(d)
+            
+        data = {'result':'Y', 'data_list':data_list}
+        res = json.dumps(data, ensure_ascii=False).encode('utf8')
+        print("response data = ", data)
+        return Response(res, content_type='application/json; charset=utf-8')
+        
+        # except Exception as e:
+        #     logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+        #     return makeErrorResponseMsgResponse(str(e)) 
+  
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+
+
+class TrainingRun(Resource):
+    
+    
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+        #try:
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('idx', required=True, type=str, help='idx')
+        args = parser.parse_args()
+        logger.info('args = {}'.format(args))
+        idx = args.get('idx')
+        logger.info("idx = " + idx)
+           
+        
+        cur = connectDBIfClosed()
+        query = 'SELECT * FROM '\
+            + TB_TRAINING_DATASET + ' WHERE idx = %s'
+        print('query = ', query)
+        cur.execute(query, (idx,))
+        r = cur.fetchone()
+        if r == None: return makeErrorResponseMsgResponse('no record')
+        
+        # query = 'UPDATE ' + TB_COLLECTION + ' SET ppdirectory=%s WHERE idx = %s'
+        # print('query = ', query)
+        # cur.execute(query, (None, idx,))
+        # conn.commit()
+    
+        data = {'result':'Y'}
+        # data.update(details)
+        res = json.dumps(data, ensure_ascii=False).encode('utf8')
+        print("response data = ", data)
+        return Response(res, content_type='application/json; charset=utf-8')
+        
+        # except Exception as e:
+        #     logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+        #     return makeErrorResponseMsgResponse(str(e)) 
+  
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+
+class TrainingRunStatus(Resource):
+    
+    
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+        #try:
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('idx', required=True, type=str, help='idx')
+        args = parser.parse_args()
+        logger.info('args = {}'.format(args))
+        idx = args.get('idx')
+        logger.info("idx = " + idx)
+           
+        
+        cur = connectDBIfClosed()
+        query = 'SELECT dirpath FROM '\
+            + TB_TRAINING_DATASET + ' WHERE idx = %s'
+        print('query = ', query)
+        cur.execute(query, (idx,))
+        r = cur.fetchone()
+        if r == None: return makeErrorResponseMsgResponse('no record')
+        if r[0] == None: return makeErrorResponseMsgResponse('no data')
+        
+        #dummy
+        data = {'result':'Y', 'status':'100'}
+        
+        # query = 'UPDATE ' + TB_COLLECTION + ' SET ppdirectory=%s WHERE idx = %s'
+        # print('query = ', query)
+        # cur.execute(query, (None, idx,))
+        # conn.commit()
+    
+        res = json.dumps(data, ensure_ascii=False).encode('utf8')
+        print("response data = ", data)
+        return Response(res, content_type='application/json; charset=utf-8')
+        
+        # except Exception as e:
+        #     logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+        #     return makeErrorResponseMsgResponse(str(e)) 
+  
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+
+
+
+class TrainingGetModelList(Resource):
+    
+    
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+        #try:
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('site_id', required=False, type=str, help='site_id')
+        parser.add_argument('building_id', required=False, type=str, help='building_id')
+        parser.add_argument('floor', required=False, type=str, help='floor')
+        args = parser.parse_args()
+        logger.info('args = {}'.format(args))
+        site_id = args.get('site_id', '%')
+        if site_id == '*': site_id = '%'
+        logger.info("site_id = " + site_id)
+        
+        building_id = args.get('building_id', '%')
+        if building_id == '*': building_id = '%'
+        logger.info("building_id = " + building_id)
+        
+        floor = args.get('floor', '%')
+        if floor == '*': floor = '%'
+        logger.info("floor = " + floor)        
+        
+        cur = connectDBIfClosed()
+        whereclause = makeWhereClause(site_id, building_id, floor)
+        print(whereclause)
+        query = 'SELECT model_id, site_id, building_id, floor, dt, confidence FROM '\
+            + TB_LOC_MODEL + whereclause + ' ORDER BY dt DESC '
+        print('query = ', query)
+        cur.execute(query, (site_id, building_id, floor,))
+        records = cur.fetchall()
+        print('records =========>', records)
+
+        data_list = []
+        #if len(records) > 0:
+        for r in records:
+            dt_str = datetime2str(r[4])
+            d = {'model_id':r[0], 'site_id':r[1], 'building_id':r[2], 'floor':r[3], 'dt':dt_str, 'confidence':str(r[5])}
+            data_list.append(d)
+            
+        data = {'result':'Y', 'data_list':data_list}
+        res = json.dumps(data, ensure_ascii=False).encode('utf8')
+        print("response data = ", data)
+        return Response(res, content_type='application/json; charset=utf-8')
+        
+        # except Exception as e:
+        #     logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+        #     return makeErrorResponseMsgResponse(str(e)) 
+  
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+
+
+class TrainingDeleteDataset(Resource):
+    
+    
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+        #try:
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('idx', required=True, type=str, help='idx')
+        args = parser.parse_args()
+        logger.info('args = {}'.format(args))
+        idx = args.get('idx')
+        logger.info("idx = " + idx)
+           
+        
+        cur = connectDBIfClosed()
+        query = 'SELECT dirpath FROM '\
+            + TB_TRAINING_DATASET + ' WHERE idx = %s'
+        print('query = ', query)
+        cur.execute(query, (idx,))
+        r = cur.fetchone()
+        if r == None: return makeErrorResponseMsgResponse('no record')
+        
+        
+        query = 'DELETE FROM ' + TB_TRAINING_DATASET + ' WHERE idx = %s'
+        print('query = ', query)
+        cur.execute(query, (idx,))
+        conn.commit()
+    
+        data = {'result':'Y'}
+        # data.update(details)
+        res = json.dumps(data, ensure_ascii=False).encode('utf8')
+        print("response data = ", data)
+        return Response(res, content_type='application/json; charset=utf-8')
+        
+        # except Exception as e:
+        #     logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+        #     return makeErrorResponseMsgResponse(str(e)) 
+  
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+
+
+
+class TrainingDeleteModel(Resource):
+    
+    
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+        #try:
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('model_id', required=True, type=str, help='idx')
+        args = parser.parse_args()
+        logger.info('args = {}'.format(args))
+        model_id = args.get('model_id')
+        logger.info("model_id = " + model_id)
+           
+        
+        cur = connectDBIfClosed()
+        query = 'SELECT dt FROM '\
+            + TB_LOC_MODEL + ' WHERE model_id = %s'
+        print('query = ', query)
+        cur.execute(query, (model_id,))
+        r = cur.fetchone()
+        if r == None: return makeErrorResponseMsgResponse('no record')
+        
+        
+        query = 'DELETE FROM ' + TB_LOC_MODEL + ' WHERE model_id = %s'
+        print('query = ', query)
+        cur.execute(query, (model_id,))
+        conn.commit()
+    
+        data = {'result':'Y'}
+        # data.update(details)
+        res = json.dumps(data, ensure_ascii=False).encode('utf8')
+        print("response data = ", data)
+        return Response(res, content_type='application/json; charset=utf-8')
+        
+        # except Exception as e:
+        #     logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+        #     return makeErrorResponseMsgResponse(str(e)) 
+  
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+
+######################################################################################
+## 수집진행 상황 API
+class CollectStatusGetJob(Resource):
+    
+    
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+        #try:
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('site_id', required=False, type=str, help='site_id')
+        # parser.add_argument('building_id', required=False, type=str, help='building_id')
+        # parser.add_argument('floor', required=False, type=str, help='floor')
+        args = parser.parse_args()
+        logger.info('args = {}'.format(args))
+        site_id = args.get('site_id', '%')
+        if site_id == '*': site_id = '%'
+        logger.info("site_id = " + site_id)
+        
+        # building_id = args.get('building_id', '%')
+        # if building_id == '*': building_id = '%'
+        # logger.info("building_id = " + building_id)
+        
+        # floor = args.get('floor', '%')
+        # if floor == '*': floor = '%'
+        # logger.info("floor = " + floor)        
+        
+        # cur = connectDBIfClosed()
+        # whereclause = makeWhereClause(site_id, '%', '%')
+        # print(whereclause)
+        # query = 'SELECT idx, site_id, building_id, floor, dt FROM '\
+        #     + TB_COLLECTION_STATUS + whereclause + ' ORDER BY dt DESC '
+        # print('query = ', query)
+        # cur.execute(query, (site_id, '%', '%',))
+        # records = cur.fetchall()
+        # print('records =========>', records)
+
+        # data_list = []
+        # #if len(records) > 0:
+        # for r in records:
+        #     dt_str = datetime2str(r[4])
+        #     d = {'idx':str(r[0]), 'site_id':r[1], 'building_id':r[2], 'floor':r[3], 'dt':dt_str}
+        #     data_list.append(d)
+        
+        # dummy
+        data_list = [{'id':'12', 'name':'ETRI-3004-1F', 'idlist':['12']}, {'id':'13', 'name':'ETRI-3004-3F', 'idlist':['13']}]
+            
+        data = {'result':'Y', 'data_list':data_list}
+        res = json.dumps(data, ensure_ascii=False).encode('utf8')
+        print("response data = ", data)
+        return Response(res, content_type='application/json; charset=utf-8')
+        
+        # except Exception as e:
+        #     logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+        #     return makeErrorResponseMsgResponse(str(e)) 
+  
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+
+
+class CollectStatusGetMapdata(Resource):
+    
+    
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+        #try:
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('idx', required=True, type=str, help='idx')
+        args = parser.parse_args()
+        logger.info('args = {}'.format(args))
+        idx = args.get('idx')
+        logger.info("idx = " + idx)
+           
+        
+        cur = connectDBIfClosed()
+        query = 'SELECT idx, scenario_name, site_id, building_id, floor, route_wp, dt_start, dt_end, gt, user_name, phonemodel FROM '\
+            + TB_COLLECTION + ' WHERE idx=%s ORDER BY dt_start DESC '
+            
+        print('query = ', query)
+        cur.execute(query, (idx,))
+        r = cur.fetchone()
+        if r == None: return makeErrorResponseMsgResponse('no record')
+        
+        map_image = '/static/mapdata/ETRI/3004/3004_1F.PNG'
+        # LL, LR, UL, UR
+        map_rect = [{"lon":"127.367212394", "lat":"36.3798125202"}, 
+                    {"lon":"127.368210944", "lat":"36.3798136260"}, 
+                    {"lon":"127.367211561", "lat":"36.3803023208"}, 
+                    {"lon":"127.368210118", "lat":"36.3803034266"}]
+        route_wp = [{'lon':'127.36793118691 ', 'lat':'36.3800722718335'},
+                    {'lon':'127.367547509083', 'lat':'36.3800725974993'},
+                    {'lon':'127.367547081407', 'lat':'36.3800101107162'},
+                    {'lon':'127.367589699251', 'lat':'36.3800101963372'},
+                    {'lon':'127.367589529849', 'lat':'36.3799303871561'}]
+    
+        data = {'result':'Y', 'map_image':map_image, 'map_rect':map_rect, 'route_wp':route_wp}
+        # data.update(details)
+        res = json.dumps(data, ensure_ascii=False).encode('utf8')
+        print("response data = ", data)
+        return Response(res, content_type='application/json; charset=utf-8')
+        
+        # except Exception as e:
+        #     logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+        #     return makeErrorResponseMsgResponse(str(e)) 
+  
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+
+
+#test only data
+x_lon = 127.36793118691
+y_lat = 36.3800722718335
+x_inc = -0.00001
+y_inc = 0.0000001
+class CollectStatusGetStatus(Resource):
+    
+    
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+        #try:
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('idx', required=True, type=str, help='idx')
+        args = parser.parse_args()
+        logger.info('args = {}'.format(args))
+        idx = args.get('idx')
+        logger.info("idx = " + idx)
+           
+        
+        cur = connectDBIfClosed()
+        query = 'SELECT idx, scenario_name, site_id, building_id, floor, route_wp, dt_start, dt_end, gt, user_name, phonemodel FROM '\
+            + TB_COLLECTION + ' WHERE idx=%s ORDER BY dt_start DESC '
+            
+        print('query = ', query)
+        cur.execute(query, (idx,))
+        r = cur.fetchone()
+        if r == None: return makeErrorResponseMsgResponse('no record')
+        
+        
+        cur_pos = [{"lon":"127.367212394", "lat":"36.3798125202"}, 
+                    {"lon":"127.368210944", "lat":"36.3798136260"}, 
+                    {"lon":"127.367211561", "lat":"36.3803023208"}, 
+                    {"lon":"127.368210118", "lat":"36.3803034266"}]
+        route_wp = [{'lon':'127.36793118691', 'lat':'36.3800722718335'},
+                    {'lon':'127.367547509083', 'lat':'36.3800725974993'},
+                    {'lon':'127.367547081407', 'lat':'36.3800101107162'},
+                    {'lon':'127.367589699251', 'lat':'36.3800101963372'},
+                    {'lon':'127.367589529849', 'lat':'36.3799303871561'}]
+    
+        global x_lon, y_lat
+        x_lon += x_inc
+        y_lat += y_inc
+        cur_pos = {"lon":str(x_lon), "lat":str(y_lat), 'floor':'1F'}
+        mark_wp = "2"
+        data = {'result':'Y', 'cur_pos': cur_pos, 'mark_wp':mark_wp}
+        # data.update(details)
+        res = json.dumps(data, ensure_ascii=False).encode('utf8')
+        print("response data = ", data)
+        return Response(res, content_type='application/json; charset=utf-8')
+        
+        # except Exception as e:
+        #     logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+        #     return makeErrorResponseMsgResponse(str(e)) 
+  
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+
+x_lon_t = 127.36793118691
+y_lat_t = 36.3800722718335
+x_inc_t = -0.00001
+y_inc_t = 0.0000001
+pos_list = []
+class CollectStatusGetStatusTraj(Resource):
+    
+    
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+        #try:
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('idx', required=True, type=str, help='idx')
+        args = parser.parse_args()
+        logger.info('args = {}'.format(args))
+        idx = args.get('idx')
+        logger.info("idx = " + idx)
+           
+        
+        cur = connectDBIfClosed()
+        query = 'SELECT idx, scenario_name, site_id, building_id, floor, route_wp, dt_start, dt_end, gt, user_name, phonemodel FROM '\
+            + TB_COLLECTION + ' WHERE idx=%s ORDER BY dt_start DESC '
+            
+        print('query = ', query)
+        cur.execute(query, (idx,))
+        r = cur.fetchone()
+        if r == None: return makeErrorResponseMsgResponse('no record')
+        
+        
+        cur_pos = [{"lon":"127.367212394", "lat":"36.3798125202"}, 
+                    {"lon":"127.368210944", "lat":"36.3798136260"}, 
+                    {"lon":"127.367211561", "lat":"36.3803023208"}, 
+                    {"lon":"127.368210118", "lat":"36.3803034266"}]
+        route_wp = [{'lon':'127.36793118691', 'lat':'36.3800722718335'},
+                    {'lon':'127.367547509083', 'lat':'36.3800725974993'},
+                    {'lon':'127.367547081407', 'lat':'36.3800101107162'},
+                    {'lon':'127.367589699251', 'lat':'36.3800101963372'},
+                    {'lon':'127.367589529849', 'lat':'36.3799303871561'}]
+    
+        global x_lon_t, y_lat_t, pos_list
+        x_lon_t += x_inc_t
+        y_lat_t += y_inc_t
+        cur_pos = {"lon":str(x_lon_t), "lat":str(y_lat_t), 'floor':'1F'}
+        pos_list.append(cur_pos)
+        mark_wp = "2"
+        data = {'result':'Y', 'cur_pos': cur_pos, 'mark_wp':mark_wp, 'pos_count':str(len(pos_list)), 'pos_traj':pos_list}
+        # data.update(details)
+        res = json.dumps(data, ensure_ascii=False).encode('utf8')
+        print("response data = ", data)
+        return Response(res, content_type='application/json; charset=utf-8')
+        
+        # except Exception as e:
+        #     logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+        #     return makeErrorResponseMsgResponse(str(e)) 
+  
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+
+
+
+
     
 app = Flask('STRONG for KSOC DB API REST Interface')
 app.config['JSON_AS_ASCII'] = False # 한글 깨짐 문제 해결
@@ -850,6 +1635,7 @@ api = Api(app)
 api.add_resource(Hello, '/')
 api.add_resource(HelloAPI, '/api')
 
+######################################################################################
 ## 측위자원수집관리 API
 #측위자원 수집데이터세트 목록 가져오기  - POST
 api.add_resource(CollectGetDatasetList, '/api/collect/get-dataset-list')
@@ -860,13 +1646,48 @@ api.add_resource(CollectGetDatasetFilter, '/api/collect/get-dataset-filter')
 #측위자원 수집데이터세트 상세 정보 가져오기  - POST									
 api.add_resource(CollectGetDatasetDetails, '/api/collect/get-dataset-details')
 
-'''
 #측위자원 수집데이터세트 삭제하기  - POST					
 api.add_resource(CollectDeleteDataset, '/api/collect/delete-dataset')
 #측위자원 후처리데이터세트 삭제하기  - POST					
 api.add_resource(CollectDeletePPDataset, '/api/collect/delete-ppdataset')
-'''
 
+#측위자원 후처리 수행  - POST					
+api.add_resource(CollectPostProcessing, '/api/collect/post-processing')
+#측위자원 후처리 상태  - POST					
+api.add_resource(CollectPostProcStatus, '/api/collect/postproc-status')
+
+'''
+'''
+######################################################################################
+## 학습관리 API
+#측위자원 수집데이터세트 필터 정보 가져오기  - POST					
+api.add_resource(TrainingGetDatasetFilter, '/api/training/get-dataset-filter')
+#학습 데이터세트 목록 가져오기  - POST
+api.add_resource(TrainingGetDatasetList, '/api/training/get-dataset-list')
+# 학습 수행하기  - POST
+api.add_resource(TrainingRun, '/api/training/run')
+# 학습수행 상태  - POST					
+api.add_resource(TrainingRunStatus, '/api/training/run-status')
+
+#학습 모델 목록 가져오기  - POST
+api.add_resource(TrainingGetModelList, '/api/training/get-model-list')
+
+#측위자원 수집데이터세트 삭제하기  - POST					
+api.add_resource(TrainingDeleteDataset, '/api/training/delete-dataset')
+#측위자원 후처리데이터세트 삭제하기  - POST					
+api.add_resource(TrainingDeleteModel, '/api/training/delete-model')
+
+
+######################################################################################
+## 수집진행 상황 API
+#측위자원 수집 진행목록 가져오기  - POST					
+api.add_resource(CollectStatusGetJob, '/api/collectstatus/get-job')
+#측위자원 수집 지도자료 가져오기  - POST					
+api.add_resource(CollectStatusGetMapdata, '/api/collectstatus/get-mapdata')
+#측위자원 수집 진행상황 가져오기  - POST					
+api.add_resource(CollectStatusGetStatus, '/api/collectstatus/get-status')
+#측위자원 수집 진행상황 가져오기  - POST					
+api.add_resource(CollectStatusGetStatusTraj, '/api/collectstatus/get-status-traj')
 
 ## 영양정보 사진업로드
 api.add_resource(NutriIngestionDetailImage, '/upload')    # 영양섭취 사진
@@ -909,7 +1730,7 @@ if __name__ == '__main__':
 
     #cur = conn.cursor() # 성능문제 고려해야 할 듯
     
-    print(f'====>{app.url_map}')
+    #print(f'====>{app.url_map}')
 
-    app.run(host='localhost', port=8091, debug=True, threaded=False)
+    app.run(host='0.0.0.0', port=8094, debug=True, threaded=False)
 

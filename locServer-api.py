@@ -18,6 +18,7 @@ from flask import Response
 from flask_cors import CORS
 import json
 import psycopg2
+import configparser
 
 #import cv2
 import numpy as np
@@ -67,89 +68,115 @@ FILEPATH_UPLOAD_INGESTION_IMAGE = 'static/img/ingestphotoupload'
 ##########################################
 # Postgresql API
 
-#host = 'dev.h4tech.co.kr'
-#port = '45432'
-
-host = '192.168.219.204'
-port = '5432'
-
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'prj_strong_ksoc',
-        'USER': 'postgres',
-        'PASSWORD': 'h42020)(',
-        'HOST': host,     # 192.168.219.204
-        'PORT': port,                # '5432',     
-    }
-}
+db_ip = '192.168.219.204'
+db_port = '5432'
+db_user = 'postgres'
+db_pw = 'h42020)('
+db_name = 'etri_loc_v1'
 
 
-TB_USER = "tb_user"
+TB_SITE = 'tb_site'	#사이트(지역)
+TB_BUILDING = 'tb_building'	
+TB_COLLECTION = 'tb_collection'	#수집
+TB_COLLECTION_STATUS = 'tb_collection_status'	#수집상황
+TB_COLLECTION_POSTPROC = 'tb_collection_postproc'	#수집데이터 후처리
+	
+TB_TRAINING_DATASET = 'tb_training_dataset'	#학습데이터셋
+TB_TRAINING = 'tb_training'	#학습수행 기록 테이블
+TB_LOC_MODEL = 'tb_loc_model'	#영상측위 학습 모델 관리
 
-TB_PT_ITEMS = "tb_pt_items"
-TB_PT_ITEMS4GAME = "tb_pt_items4game"
-TB_PT_WEEKLY_PERSONAL = "tb_pt_weekly_personal"
-TB_PT_WEEKLY_PLAN = "tb_pt_weekly_plan"
-TB_PT_WEEKLY_PLAN_DATA = "tb_pt_weekly_plan_data"
 
-TB_GAMES = "tb_games"
+#########################################################################################
 
-TB_PHYSICAL_MEASURE_CAT = "tb_physical_measure_cat"
-TB_PHYSICAL_MEASURE_VALUES = "tb_physical_measure_values"
-TB_PHYSICAL_MEASURE_ITEMS = "tb_physical_measure_items"
-TB_PHYSICAL_MEASURE_PERSONAL = "tb_physical_measure_personal"
+def dbconfig_read(config):
+    global db_ip, db_port, db_name, db_pw
+    
+    db_ip = config['DB']['ip']
+    db_port = config['DB']['port']
+    db_name = config['DB']['dbname']
+    db_pw = config['DB']['pw']
+    
+def kafkaconfig_read(config):
+    global kafka_url
+    
+    kafka_url = config['kafka']['kafka_url']
+    kafka_topic = config['kafka']['kafka_topic']
+    
+def config_read():
+    
+    # 설정파일 읽기
+    config = configparser.ConfigParser()    
+    config.read('locWeb-api_config.ini', encoding='utf-8') 
 
-USER_TYPE = {'admin':0, 'coach':1, 'player':10}
-DAYOFWEEK = {'일요일':6, '월요일':0, '화요일':1, '수요일':2, '목요일':3, '금요일':4, '토요일':5,
-    '일':6, '월':0, '화':1, '수':2, '목':3, '금':4, '토':5}
-DAYOFWEEK2STR = {'6':'일요일', '0':'월요일', '1':'화요일', '2':'수요일', '3':'목요일', '4':'금요일', '5':'토요일',}
-
-DAYTIME = {'당일':0, '조조':1, '오전':2, '오후':3, '야간':4}
-DAYTIME2STR = {'0':'당일', '1':'조조', '2':'오전', '3':'오후', '4':'야간'}
+    # 설정파일의 색션 확인
+    # config.sections())
+    dbconfig_read(config)
+    #kafkaconfig_read(config)
+    
+config_read()
+host = db_ip
+port = db_port
+print('db ip:port = {}:{}'.format(db_ip, db_port))
+#print('kafka broker = ', kafka_url)
 
 ############################################################################################################
-
 # H4T Database server - WAN
-# conn = psycopg2.connect(host=host, dbname='prj_strong_ksoc', user='postgres', \
-#     password='h42020)(', port=port)
-# print(conn)
+def connectDB():
+    conn = psycopg2.connect(host=db_ip, dbname=db_name, user=db_user, \
+        password=db_pw, port=db_port)
+    print(conn)
+    return conn
 
 # local
 #conn = psycopg2.connect(host='192.168.219.204', dbname='prj_strong_ksoc', user='postgres', password='h42020)(', port='5432')
 
-# cur = conn.cursor() # 성능문제 고려해야 할 듯
+conn = connectDB()
+cur = conn.cursor() # 성능문제 고려해야 할 듯
 
-# def connectDBIfClosed():
-#     global conn
-#     global cur
-#     if conn == None or conn.closed == 1:
-#         logger.warning('DB Connection closed.') 
+def connectDBIfClosed():
+    global conn
+    global cur
+    if conn == None or conn.closed == 1:
+        logger.warning('DB Connection closed.') 
 
-#         try:
-#             conn = psycopg2.connect(host=host, dbname='prj_strong_ksoc', user='postgres', \
-#                 password='h42020)(', port=port)
-#             #print('reconnected DB....')  
-#             logger.info('reconnected DB....1') 
-#         except Exception as e:
-#             logger.error('DB connection 1 ' + e)
-#             return None
+        try:
+            conn = connectDB()
+            #print('reconnected DB....')  
+            logger.info('reconnected DB....1') 
+        except Exception as e:
+            logger.error('DB connection 1 ' + e)
+            return None
         
-#     try:
-#         cur = conn.cursor() # 성능문제 고려해야 할 듯
-#     except Exception as e:
-#         try:
-#             conn = psycopg2.connect(host=host, dbname='prj_strong_ksoc', user='postgres', \
-#                 password='h42020)(', port=port)
-#             #print('reconnected DB....')  
-#             logger.info('reconnected DB....2') 
-#             cur = conn.cursor() # 성능문제 고려해야 할 듯
-#         except Exception as e:
-#             logger.error('DB connection 2 ' + e)
-#             return None     
+    try:
+        cur = conn.cursor() # 성능문제 고려해야 할 듯
+    except Exception as e:
+        try:
+            conn = connectDB()
+            #print('reconnected DB....')  
+            logger.info('reconnected DB....2') 
+            cur = conn.cursor() # 성능문제 고려해야 할 듯
+        except Exception as e:
+            logger.error('DB connection 2 ' + e)
+            return None     
 
-#     return cur
+    return cur
+############################################################################################################
+# util
+def getFileInfo(fpath):
+    fname = os.path.basename(fpath)
+    info = fpath.stat()
+    sz = info.st_size
+    if sz >= 1000000:
+        sz = sz / 1000000.
+        sz = f'{sz:,.1f}MB'
+    elif sz >= 100:
+        sz = sz / 1000.
+        sz = f'{sz:,.1f}KB'
+    else:
+        sz = f'{sz:}B'
+    
+    return {'name': fname, 'size':sz}
+
 
 
 ############################################################################################################
@@ -554,6 +581,87 @@ class HelloAPI(Resource):
         'Access-Control-Allow-Methods' : 'GET' }
 
 
+
+######################################################################################
+## 수집app API
+class CollappStartCollection(Resource):
+    
+    
+    def post(self):
+        logger.info('called : ' + self.__class__.__name__ + ': ' + sys._getframe().f_code.co_name + '()')
+        #try:
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('scenario_name', required=True, type=str, help='scenario_name')
+        parser.add_argument('site_id', required=True, type=str, help='site_id')
+        parser.add_argument('building_id', required=True, type=str, help='building_id')
+        parser.add_argument('floor', required=True, type=str, help='floor')
+        parser.add_argument('route_wp', required=True, type=str, help='route_wp')
+        parser.add_argument('dt_start', required=True, type=str, help='dt_start')
+        args = parser.parse_args()
+        logger.info('args = {}'.format(args))
+        
+        scenario_name = args.get('scenario_name')
+        logger.info("scenario_name = " + scenario_name)
+        
+        site_id = args.get('site_id')
+        logger.info("site_id = " + site_id)
+        
+        building_id = args.get('building_id')
+        logger.info("building_id = " + building_id)
+        
+        floor = args.get('floor')
+        logger.info("floor = " + floor)        
+        
+        route_wp = args.get('route_wp')
+        if route_wp.strip() == '': route_wp = None
+        logger.info(f"route_wp = {route_wp}")
+                       
+        dt_start = args.get('dt_start')
+        logger.info("dt_start = " + dt_start)        
+        
+        cur = connectDBIfClosed()
+        query = 'SELECT idx, scenario_name, site_id, building_id, floor, route_wp, dt_start, dt_end, gt, user_name, phonemodel FROM '\
+            + TB_COLLECTION + ' WHERE scenario_name=%s and site_id=%s and building_id=%s and floor=%s and route_wp=%s and dt_end=%s'
+        print('query = ', query)
+        cur.execute(query, (scenario_name, site_id, building_id, floor, route_wp, None))
+        r = cur.fetchone()
+        idx = None
+
+        print('records =========>', r)
+        # 끝내지 않은 동일 조건의 레코드가 있으면 이것으로 대체한다.
+        if r != None:
+            idx = str(r[0])
+
+            # 시간업데이트
+            query = 'UPDATE ' + TB_COLLECTION + ' SET dt_start=%s WHERE idx=%s '
+            cur.execute(query, (dt_start, idx))
+            conn.commit()
+        else:
+            query = 'INSERT INTO ' + TB_COLLECTION + \
+                '(scenario_name, site_id, building_id, floor, route_wp, dt_start, dt_end, gt, user_name, phonemodel) '\
+                    + ' VALUES (%s,%s,%s,%s,%s,%s) RETURNING idx '
+            cur.execute(query, (scenario_name, site_id, building_id, floor, route_wp, dt_start))
+            conn.commit()
+            idx = cur.fetchone()[0] # new idx
+            
+        data = {'result':'Y', 'idx':str(idx)}
+        res = json.dumps(data, ensure_ascii=False).encode('utf8')
+        print("response data = ", data)
+        return Response(res, content_type='application/json; charset=utf-8')
+        
+        # except Exception as e:
+        #     logger.error(self.__class__.__name__ + ' Get : ' + str(e))
+        #     return makeErrorResponseMsgResponse(str(e)) 
+  
+
+    def options (self):
+        return {'Allow' : 'POST' }, 200, \
+        { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*',\
+        'Access-Control-Allow-Methods' : 'POST' }
+
+
+
     
 app = Flask('STRONG for KSOC DB API REST Interface')
 app.config['JSON_AS_ASCII'] = False # 한글 깨짐 문제 해결
@@ -569,7 +677,13 @@ api = Api(app)
 api.add_resource(Hello, '/')
 api.add_resource(HelloAPI, '/api')
 
-## 기본 API
+######################################################################################
+## 측위자원수집관리 API
+#측위자원 수집app 수집시작하기  - POST
+api.add_resource(CollappStartCollection, '/api/collapp/start-collection')
+#측위자원 수집app 수집 상태  - POST
+#api.add_resource(CollappStartCollection, '/api/collapp/collection-status')
+
 
 ## 영양정보 사진업로드
 api.add_resource(NutriIngestionDetailImage, '/upload')    # 영양섭취 사진
