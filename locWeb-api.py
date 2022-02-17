@@ -7,7 +7,6 @@ ETRI Localization
 
     Postgresql DB API REST 인터페이스
     주의: 모든 숫자 값은 JSON 문자열로 변환하여 전달한다.
-          onermpercent 값은 없으면 디폴트 100으로 저장
 """
 
 
@@ -1462,17 +1461,17 @@ class CollectStatusGetMapdata(Resource):
         r = cur.fetchone()
         if r == None: return makeErrorResponseMsgResponse('no record')
         
-        map_image = '/static/mapdata/ETRI/3004/3004_1F.PNG'
+        map_image = '/mapdata/ETRI/3004/3004_1F.PNG'
         # LL, LR, UL, UR
-        map_rect = [{"lon":"127.367212394", "lat":"36.3798125202"}, 
-                    {"lon":"127.368210944", "lat":"36.3798136260"}, 
-                    {"lon":"127.367211561", "lat":"36.3803023208"}, 
-                    {"lon":"127.368210118", "lat":"36.3803034266"}]
-        route_wp = [{'lon':'127.36793118691 ', 'lat':'36.3800722718335'},
-                    {'lon':'127.367547509083', 'lat':'36.3800725974993'},
-                    {'lon':'127.367547081407', 'lat':'36.3800101107162'},
-                    {'lon':'127.367589699251', 'lat':'36.3800101963372'},
-                    {'lon':'127.367589529849', 'lat':'36.3799303871561'}]
+        map_rect = [{'lng':"127.367212394", "lat":"36.3798125202"}, 
+                    {'lng':"127.368210944", "lat":"36.3798136260"}, 
+                    {'lng':"127.367211561", "lat":"36.3803023208"}, 
+                    {'lng':"127.368210118", "lat":"36.3803034266"}]
+        route_wp = [{'lng':'127.36793118691 ', 'lat':'36.3800722718335'},
+                    {'lng':'127.367547509083', 'lat':'36.3800725974993'},
+                    {'lng':'127.367547081407', 'lat':'36.3800101107162'},
+                    {'lng':'127.367589699251', 'lat':'36.3800101963372'},
+                    {'lng':'127.367589529849', 'lat':'36.3799303871561'}]
     
         data = {'result':'Y', 'map_image':map_image, 'map_rect':map_rect, 'route_wp':route_wp}
         # data.update(details)
@@ -1522,25 +1521,25 @@ class CollectStatusGetStatus(Resource):
         if r == None: return makeErrorResponseMsgResponse('no record')
         
         
-        cur_pos = [{"lon":"127.367212394", "lat":"36.3798125202"}, 
-                    {"lon":"127.368210944", "lat":"36.3798136260"}, 
-                    {"lon":"127.367211561", "lat":"36.3803023208"}, 
-                    {"lon":"127.368210118", "lat":"36.3803034266"}]
-        route_wp = [{'lon':'127.36793118691', 'lat':'36.3800722718335'},
-                    {'lon':'127.367547509083', 'lat':'36.3800725974993'},
-                    {'lon':'127.367547081407', 'lat':'36.3800101107162'},
-                    {'lon':'127.367589699251', 'lat':'36.3800101963372'},
-                    {'lon':'127.367589529849', 'lat':'36.3799303871561'}]
+        cur_pos = [{'lng':"127.367212394", "lat":"36.3798125202"}, 
+                    {'lng':"127.368210944", "lat":"36.3798136260"}, 
+                    {'lng':"127.367211561", "lat":"36.3803023208"}, 
+                    {'lng':"127.368210118", "lat":"36.3803034266"}]
+        route_wp = [{'lng':'127.36793118691', 'lat':'36.3800722718335'},
+                    {'lng':'127.367547509083', 'lat':'36.3800725974993'},
+                    {'lng':'127.367547081407', 'lat':'36.3800101107162'},
+                    {'lng':'127.367589699251', 'lat':'36.3800101963372'},
+                    {'lng':'127.367589529849', 'lat':'36.3799303871561'}]
     
         global x_lon, y_lat
         x_lon += x_inc
         y_lat += y_inc
-        cur_pos = {"lon":str(x_lon), "lat":str(y_lat), 'floor':'1F'}
+        cur_pos = {'lng':str(x_lon), "lat":str(y_lat), 'floor':'1F'}
         mark_wp = "2"
         data = {'result':'Y', 'cur_pos': cur_pos, 'mark_wp':mark_wp}
         # data.update(details)
         res = json.dumps(data, ensure_ascii=False).encode('utf8')
-        print("response data = ", data)
+        logger.info(f"response data = {data}")
         return Response(res, content_type='application/json; charset=utf-8')
         
         # except Exception as e:
@@ -1584,20 +1583,20 @@ class CollectStatusGetStatusTraj(Resource):
         if r == None: return makeErrorResponseMsgResponse('no record')
         
         
-        cur_pos = [{"lon":"127.367212394", "lat":"36.3798125202"}, 
-                    {"lon":"127.368210944", "lat":"36.3798136260"}, 
-                    {"lon":"127.367211561", "lat":"36.3803023208"}, 
-                    {"lon":"127.368210118", "lat":"36.3803034266"}]
-        route_wp = [{'lon':'127.36793118691', 'lat':'36.3800722718335'},
-                    {'lon':'127.367547509083', 'lat':'36.3800725974993'},
-                    {'lon':'127.367547081407', 'lat':'36.3800101107162'},
-                    {'lon':'127.367589699251', 'lat':'36.3800101963372'},
-                    {'lon':'127.367589529849', 'lat':'36.3799303871561'}]
+        cur_pos = [{'lng':"127.367212394", "lat":"36.3798125202"}, 
+                    {'lng':"127.368210944", "lat":"36.3798136260"}, 
+                    {'lng':"127.367211561", "lat":"36.3803023208"}, 
+                    {'lng':"127.368210118", "lat":"36.3803034266"}]
+        route_wp = [{'lng':'127.36793118691', 'lat':'36.3800722718335'},
+                    {'lng':'127.367547509083', 'lat':'36.3800725974993'},
+                    {'lng':'127.367547081407', 'lat':'36.3800101107162'},
+                    {'lng':'127.367589699251', 'lat':'36.3800101963372'},
+                    {'lng':'127.367589529849', 'lat':'36.3799303871561'}]
     
         global x_lon_t, y_lat_t, pos_list
         x_lon_t += x_inc_t
         y_lat_t += y_inc_t
-        cur_pos = {"lon":str(x_lon_t), "lat":str(y_lat_t), 'floor':'1F'}
+        cur_pos = {'lng':str(x_lon_t), "lat":str(y_lat_t), 'floor':'1F'}
         pos_list.append(cur_pos)
         mark_wp = "2"
         data = {'result':'Y', 'cur_pos': cur_pos, 'mark_wp':mark_wp, 'pos_count':str(len(pos_list)), 'pos_traj':pos_list}
@@ -1621,7 +1620,7 @@ class CollectStatusGetStatusTraj(Resource):
 
 
     
-app = Flask('STRONG for KSOC DB API REST Interface')
+app = Flask('LOCALIZATION API REST Interface for WEB', static_url_path='')
 app.config['JSON_AS_ASCII'] = False # 한글 깨짐 문제 해결
 CORS(app)   # 모든 주소에 대하여 요청 허용
 # 1 ‘https://hwangtoemat.github.io’ 에 해당하는 모든 포트, 하위 주소를 허용한다.
