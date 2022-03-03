@@ -191,6 +191,29 @@ def interpolate(tx, t0, t1, y0, y1):
 def extrapolate(tx, t0, t1, y0, y1):
     return (y1-y0) * (tx-t0)/(t1 - t0)
 
+# 가장 최근 값을 사용
+def mostRecentValueInterpolate(xs, ys, startTime_sec, endTime_sec, interval_ms):
+    assert startTime_sec >= xs[0]
+    
+    times_arr = np.arange(startTime_sec, endTime_sec, interval_ms/1000.0)
+    xi = 0
+    ys_out = [] # 결과 y값
+    for t in times_arr:
+        for i in range(xi, len(xs)):
+            if xs[i] > t: break
+        
+        xi = i - 1
+        ys_out.append(ys[xi])
+    
+
+    newarr = np.array(ys_out)
+
+    print(f'....... mostRecentValueInterpolate result = \n{newarr}')
+    #input('\n\nwait ... key ')
+    return newarr
+
+
+
 from scipy.interpolate import interp1d
 import numpy as np
 
@@ -202,6 +225,7 @@ def linearInterpolate(xs, ys, startTime_sec, endTime_sec, interval_ms):
     print(f'....... linearInterpolate result = \n{newarr}')
     #input('\n\nwait ... key ')
     return newarr
+    
     
 from scipy.interpolate import UnivariateSpline
 def splineInterpolate(xs, ys, startTime_sec, endTime_sec, interval_ms):
@@ -224,7 +248,8 @@ def sync_data(csvfname, startTime_sec, endTime_sec, interval_ms):
     arr = []
     for y in ys:
         ys_np = np.array(y)
-        arr.append(linearInterpolate(xs_np, ys_np, startTime_sec, endTime_sec, interval_ms).tolist())
+        #arr.append(linearInterpolate(xs_np, ys_np, startTime_sec, endTime_sec, interval_ms).tolist())
+        arr.append(mostRecentValueInterpolate(xs_np, ys_np, startTime_sec, endTime_sec, interval_ms).tolist())
         
     return arr
     

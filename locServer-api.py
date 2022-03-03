@@ -598,6 +598,9 @@ class CollappStartCollection(Resource):
         parser.add_argument('floor', required=True, type=str, help='floor')
         parser.add_argument('route_wp', required=True, type=str, help='route_wp')
         parser.add_argument('dt_start', required=True, type=str, help='dt_start')
+        parser.add_argument('gt', required=True, type=str, help='gt')
+        parser.add_argument('user', required=False, type=str, help='user')
+        parser.add_argument('phonemodel', required=False, type=str, help='phonemodel')
         args = parser.parse_args()
         logger.info('args = {}'.format(args))
         
@@ -616,15 +619,28 @@ class CollappStartCollection(Resource):
         route_wp = args.get('route_wp')
         if route_wp.strip() == '': route_wp = None
         logger.info(f"route_wp = {route_wp}")
-                       
+
         dt_start = args.get('dt_start')
-        logger.info("dt_start = " + dt_start)        
+        logger.info("dt_start = {dt_start}")        
         
+        gt = args.get('gt')
+        logger.info(f"gt = {gt}")
+        
+        user = args.get('user')
+        if user.strip() == '': user = None
+        logger.info(f"route_wp = {user}")
+        
+        phonemodel = args.get('phonemodel')
+        if phonemodel.strip() == '': phonemodel = None
+        logger.info(f"phonemodel = {phonemodel}")
+
         cur = connectDBIfClosed()
-        query = 'SELECT idx, scenario_name, site_id, building_id, floor, route_wp, dt_start, dt_end, gt, user_name, phonemodel FROM '\
-            + TB_COLLECTION + ' WHERE scenario_name=%s and site_id=%s and building_id=%s and floor=%s and route_wp=%s and dt_end=%s'
+        query = 'SELECT idx, scenario_name, site_id, building_id, floor, route_wp, dt_start, \
+            dt_end, gt, user_name, phonemodel FROM '\
+            + TB_COLLECTION + ' WHERE scenario_name=%s and site_id=%s and building_id=%s and \
+                floor=%s and route_wp=%s and gt=%s and user=%s and phonemodel=%s'
         print('query = ', query)
-        cur.execute(query, (scenario_name, site_id, building_id, floor, route_wp, None))
+        cur.execute(query, (scenario_name, site_id, building_id, floor, route_wp, gt, user, phonemodel))
         r = cur.fetchone()
         idx = None
 
@@ -640,8 +656,8 @@ class CollappStartCollection(Resource):
         else:
             query = 'INSERT INTO ' + TB_COLLECTION + \
                 '(scenario_name, site_id, building_id, floor, route_wp, dt_start, dt_end, gt, user_name, phonemodel) '\
-                    + ' VALUES (%s,%s,%s,%s,%s,%s) RETURNING idx '
-            cur.execute(query, (scenario_name, site_id, building_id, floor, route_wp, dt_start))
+                    + ' VALUES (%s,%s,%s,%s,%s,%s, %s,%s,%s) RETURNING idx '
+            cur.execute(query, (scenario_name, site_id, building_id, floor, route_wp, dt_start, gt, user, phonemodel))
             conn.commit()
             idx = cur.fetchone()[0] # new idx
             

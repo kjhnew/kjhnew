@@ -69,6 +69,8 @@ FILEPATH_UPLOAD_INGESTION_IMAGE = 'static/img/ingestphotoupload'
 FILEPATH_LOCDATA_PATH = "e:/LOCDATA/COLLECTION"
 FILEPATH_MAPDATA_PATH = "e:/LOCDATA/MAPDATA"
 
+data_directory = FILEPATH_LOCDATA_PATH
+
 ##########################################
 # Postgresql API
 
@@ -93,6 +95,13 @@ TB_LOC_MODEL = 'tb_loc_model'	#영상측위 학습 모델 관리
 
 #########################################################################################
 
+def datadirectory_read(config):
+    global data_directory
+    
+    data_directory = config['system']['datadirectory']
+    print('data_directory :', data_directory)
+
+
 def dbconfig_read(config):
     global db_ip, db_port, db_name, db_pw
     
@@ -115,12 +124,14 @@ def config_read():
 
     # 설정파일의 색션 확인
     # config.sections())
+    datadirectory_read(config)
     dbconfig_read(config)
     #kafkaconfig_read(config)
     
 config_read()
 host = db_ip
 port = db_port
+print('data_directory :' + data_directory)
 print('db ip:port = {}:{}'.format(db_ip, db_port))
 #print('kafka broker = ', kafka_url)
 
@@ -837,12 +848,14 @@ class CollappUploadDataset(Resource):
         args = dict(request.form)
         logger.info('args ===> {}'.format(args))
         idx = args.get('idx')
+        dt_end = args.get('dt_end')
 
         # TODO: idx 가 없는 경우 고려해야 하나?
         #   만일 offline 상태로 수집해야 한다면? idx를 받아 오지 못한다.
         #       이런경우에는 upload 시 DB에 collection 레코드를 생성하도록 해야한다.
         #       idx == '-1'인경우이다.
         if idx == None: return makeErrorResponseMsgResponse('no idx')
+        if idx == None: return makeErrorResponseMsgResponse('no dt_end')
         cur = connectDBIfClosed()
         query = 'SELECT * FROM ' + TB_COLLECTION + ' WHERE idx=%s'
         print('query = ', query)
@@ -855,22 +868,20 @@ class CollappUploadDataset(Resource):
         floor = r[4]
         dt_start = r[6]
         if dt_start == None: return makeErrorResponseMsgResponse(f'no start time')
+        
         dtstr = dtstr2planestr(datetime2str(dt_start))
-        path = os.path.join(FILEPATH_LOCDATA_PATH, site_id)
-        path = os.path.join(path, building_id)
-        path = os.path.join(path, scenario_name)
-        path = os.path.join(path, dtstr)
+
+        datapath = site_id
+        datapath = os.path.join(datapath, building_id)
+        datapath = os.path.join(datapath, scenario_name)
+        datapath = os.path.join(datapath, dtstr)
+        
+        path = os.path.join(data_directory, datapath)
+
         logger.info(f"dataset upload path = {path}")
 
         # 기존 폴더가 존재할 수 있다. 반복 업로드 가능
         os.makedirs(path, exist_ok=True)
-        
-        # scenarioid = args.get('scenarioid')
-        # if scenarioid != None:
-        #     print(f"scenarioid = {scenarioid}")
-        # time_ = args.get('time')
-        # item = args.get('item')
-        # details = args.get('details', '')
 
         print(request.files.to_dict())
         #f = request.files.get('photo')
@@ -899,6 +910,11 @@ class CollappUploadDataset(Resource):
             logger.info('metadatafile filename : ' + filename)
             logger.info('metadatafile strFilePath : ' + strFilePath)    
                
+
+        # dt_end, datapath 업데이트, datapath는 상대 위치
+        query = 'UPDATE ' + TB_COLLECTION + ' SET dt_end=%s, datapath=%s WHERE idx=%s '
+        cur.execute(query, (dt_end, datapath, idx))
+        conn.commit()
             
         data = {'result':'Y'}
         res = json.dumps(data, ensure_ascii=False).encode('utf8')

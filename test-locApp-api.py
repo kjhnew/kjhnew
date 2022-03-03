@@ -43,6 +43,7 @@ jstr_saved = img_jstr1
 URLBase = 'http://localhost:8094/api'
 #URLBase = 'http://192.168.219.204:8094/api'
 #URLBase = 'http://124.61.24.153:48094/api'
+URLBase = 'http://192.168.219.114:8094/api'
 
 print(f"URLBase ==========> {URLBase}")
 
@@ -212,45 +213,161 @@ def bytea2data(byteafromdb):
 
 ###########################################################################
 # /api
-URL = URLBase + '/collect'
-# 측위자원수집 관리
+URL = URLBase + '/collapp'
+# 측위자원수집app
 '''
-data = {"site_id": "*", "building_id": "3004", "floor": "*"}			
+data = {"site_id": "ETRI", "building_id": "3004", "floor": "1F", 'scenario_name':'sc11', "route_wp": "3004_1F_WP_1",\
+    'dt_start':'2022-02-03 11:14:53.2', 'gt':'B', 'user':'myname', 'phonemodel':'samsung SM-N986N'}			
 print("\ndata = ", data)
-apiurl = URL+'/get-dataset-list'
+apiurl = URL+'/start-collection'
 res = requests.post(apiurl, json=data, headers=headers)
-print(f'\n>>>>>>> POST 측위자원수집 데이터세트 목록({apiurl}) == > {res.text}')
+print(f'\n>>>>>>> POST 수집 시작({apiurl}) == > {res.text}')
+'''
 
-
-data = {"site_id": "*", "building_id": "3004", "floor": "*"}			
+'''
+dt = datetime2str(datetime.datetime.now())
+data = {"site_id": "ETRI", "building_id": "3004", "floor": "1F", 'scenario_name':'sc11', "route_wp": "3004_1F_WP_1",\
+    'dt_start':dt, 'gt':'B', 'user':'myname', 'phonemodel':'samsung SM-N986N'}			
 print("\ndata = ", data)
-apiurl = URL+'/get-ppdataset-list'
+apiurl = URL+'/start-collection'
 res = requests.post(apiurl, json=data, headers=headers)
-print(f'\n>>>>>>> POST 측위자원수집 후처리 데이터세트 목록({apiurl}) == > {res.text}')
+print(f'\n>>>>>>> POST 수집 시작({apiurl}) == > {res.text}')
 
-
-data = {"site_id": "*"}			
-print("\ndata = ", data)
-apiurl = URL+'/get-dataset-filter'
-res = requests.post(apiurl, json=data, headers=headers)
-print(f'\n>>>>>>> POST 측위자원 필터 목록({apiurl}) == > {res.text}')
-
-
-data = {"idx": "18"}			
-print("\ndata = ", data)
-apiurl = URL+'/get-dataset-details'
-res = requests.post(apiurl, json=data, headers=headers)
-print(f'\n>>>>>>> POST 측위자원 상세정보({apiurl}) == > {res.text}')
 retdict = json.loads(res.text)
-print(f'\ndetails ===> \n' + retdict['details'])
+print(f'\nreturn idx ===> \n' + retdict['idx'])
+idx = retdict.get('idx')
 
+#test only data
+x_lon = 127.36793118691
+y_lat = 36.3800722718335
+x_inc = -0.00001
+y_inc = 0.00001
 
-data = {"idx": "25"}			
+dt = datetime2str(datetime.datetime.now())
+cur_pos = {'lon':str(x_lon), 'lat':str(y_lat), 'floor':'1F'}
+data = {"idx": idx, 'action':'pos', 'dt':dt, 'cur_pos':cur_pos, 'mark_wp':'-1'}			
 print("\ndata = ", data)
-apiurl = URL+'/delete-dataset'
+apiurl = URL+'/collection-status'
 res = requests.post(apiurl, json=data, headers=headers)
-print(f'\n>>>>>>> POST 데이터세트 삭제({apiurl}) == > {res.text}')
+print(f'\n>>>>>>> POST 측위자원수집앱 진행 상황({apiurl}) == > {res.text}')
+# retdict = json.loads(res.text)
+# print(f'\ndetails ===> \n' + retdict['details'])
 
+time.sleep(2)
+
+dt = datetime2str(datetime.datetime.now())
+x_lon += x_inc
+y_lat += y_inc
+
+# record 시작
+cur_pos = {'lon':str(x_lon), 'lat':str(y_lat), 'floor':'1F'}
+data = {"idx": idx, 'action':'record', 'dt':dt, 'cur_pos':cur_pos, 'mark_wp':'0'}			
+print("\ndata = ", data)
+apiurl = URL+'/collection-status'
+res = requests.post(apiurl, json=data, headers=headers)
+print(f'\n>>>>>>> POST 측위자원수집앱 진행 상황({apiurl}) == > {res.text}')
+# retdict = json.loads(res.text)
+# print(f'\ndetails ===> \n' + retdict['details'])
+
+for i in range(5):
+    x_lon += x_inc
+    y_lat += y_inc
+    dt = datetime2str(datetime.datetime.now())
+    cur_pos = {'lon':str(x_lon), 'lat':str(y_lat), 'floor':'1F'}
+    data = {"idx": idx, 'action':'pos', 'dt':dt, 'cur_pos':cur_pos, 'mark_wp':'1'}			
+    print("\ndata = ", data)
+    apiurl = URL+'/collection-status'
+    res = requests.post(apiurl, json=data, headers=headers)
+    print(f'\n>>>>>>> POST 측위자원수집앱 진행 상황({apiurl}) == > {res.text}')    
+    time.sleep(1)
+    
+
+for i in range(5):
+    x_lon += x_inc
+    y_lat += y_inc
+    dt = datetime2str(datetime.datetime.now())
+    cur_pos = {'lon':str(x_lon), 'lat':str(y_lat), 'floor':'1F'}
+    data = {"idx": idx, 'action':'pos', 'dt':dt, 'cur_pos':cur_pos, 'mark_wp':'2'}			
+    print("\ndata = ", data)
+    apiurl = URL+'/collection-status'
+    res = requests.post(apiurl, json=data, headers=headers)
+    print(f'\n>>>>>>> POST 측위자원수집앱 진행 상황({apiurl}) == > {res.text}')    
+    time.sleep(1)
+    
+
+dt = datetime2str(datetime.datetime.now())
+x_lon += x_inc
+y_lat += y_inc
+# 수집 종료
+cur_pos = {'lon':str(x_lon), 'lat':str(y_lat), 'floor':'1F'}
+data = {"idx": idx, 'action':'stop', 'dt':dt, 'cur_pos':cur_pos, 'mark_wp':'3'}			
+print("\ndata = ", data)
+apiurl = URL+'/collection-status'
+res = requests.post(apiurl, json=data, headers=headers)
+print(f'\n>>>>>>> POST 측위자원수집앱 진행 상황({apiurl}) == > {res.text}')
+
+'''
+
+###########################################################################
+# /api
+URL = URLBase + '/mapdata'
+# 
+
+data = {'site_id':'KAIST'}			
+print("\ndata = ", data)
+apiurl = URL+'/get-building-list'
+res = requests.post(apiurl, json=data, headers=headers)
+print(f'\n>>>>>>> POST no building {apiurl}) == > {res.text}')
+
+data = {}			
+print("\ndata = ", data)
+apiurl = URL+'/get-site-list'
+res = requests.post(apiurl, json=data, headers=headers)
+print(f'\n>>>>>>> POST {apiurl}) == > {res.text}')
+
+data = {'site_id':'ETRI'}			
+print("\ndata = ", data)
+apiurl = URL+'/get-building-list'
+res = requests.post(apiurl, json=data, headers=headers)
+print(f'\n>>>>>>> POST {apiurl}) == > {res.text}')
+
+
+
+data = {'site_id':'ETRI', 'building_id':'3002'}			
+print("\ndata = ", data)
+apiurl = URL+'/get-floor-list'
+res = requests.post(apiurl, json=data, headers=headers)
+print(f'\n>>>>>>> POST {apiurl}) == > {res.text}')
+
+
+data = {'site_id':'ETRI', 'building_id':'3003'}			
+print("\ndata = ", data)
+apiurl = URL+'/get-floor-list'
+res = requests.post(apiurl, json=data, headers=headers)
+print(f'\n>>>>>>> POST {apiurl}) == > {res.text}')
+
+
+data = {'site_id':'ETRI', 'building_id':'3004'}			
+print("\ndata = ", data)
+apiurl = URL+'/get-floor-list'
+res = requests.post(apiurl, json=data, headers=headers)
+print(f'\n>>>>>>> POST {apiurl}) == > {res.text}')
+
+
+data = {'site_id':'ETRI', 'building_id':'3004'}			
+print("\ndata = ", data)
+apiurl = URL+'/get-route-list'
+res = requests.post(apiurl, json=data, headers=headers)
+print(f'\n>>>>>>> POST {apiurl}) == > {res.text}')
+
+
+data = {'site_id':'ETRI', 'building_id':'3002'}			
+print("\ndata = ", data)
+apiurl = URL+'/get-route-list'
+res = requests.post(apiurl, json=data, headers=headers)
+print(f'\n>>>>>>> POST {apiurl}) == > {res.text}')
+
+'''
 
 
 data = {"idx": "250000"}			
@@ -284,10 +401,6 @@ print(f'\n>>>>>>> POST 후처리 수행 상황({apiurl}) == > {res.text}')
 
 '''
 
-###########################################################################
-# /api
-URL = URLBase + '/training'
-# 학습 관리
 '''
 data = {"site_id": "*"}			
 print("\ndata = ", data)
@@ -373,6 +486,7 @@ URL = URLBase + '/collectstatus'
 # 수집 상태
 '''
 e'''
+exit(0)
 
 data = {"site_id": "*"}			
 print("\ndata = ", data)
@@ -387,7 +501,6 @@ apiurl = URL+'/get-mapdata'
 res = requests.post(apiurl, json=data, headers=headers)
 print(f'\n>>>>>>> POST 수집작업관련 빌딩맵({apiurl}) == > {res.text}')
 
-exit(0)
 
 data = {"idx": "12"}			
 print("\ndata = ", data)
@@ -816,487 +929,6 @@ def getOrIfBlank2None(dict, key):
     return val
 
 
-def temporary_post(datain):
-
-    userid = datain.get('userid')
-    nameset = datain.get('nameset')
-    dtbegin = datain.get('dtbegin')
-    dtend = datain.get('dtend')
-    weeklyplan = datain.get('weeklyplan')     # {"월요일":{"조조":[{"ptid":"01142", "param1":"32.5", ...
-
-    dt = datetime.datetime.now()
-    dtstr = datetime2str(dt)
-
-    query = 'SELECT * FROM ' + TB_PT_WEEKLY_PLAN + ' WHERE userid=%s '
-    cur.execute(query, (userid, ))
-    rec = cur.fetchone()
-    if rec == None:
-        # insert
-        query = 'INSERT INTO ' + TB_PT_WEEKLY_PLAN + \
-            ' (userid, dt, nameset, dtbegin, dtend) \
-            VALUES (%s,%s,%s,%s,%s) '
-        print("query  = ", query)
-        cur.execute(query, (userid, dtstr, nameset, dtbegin, dtend,))
-        conn.commit()
-    else:
-        #update
-        query = 'UPDATE ' + TB_PT_WEEKLY_PLAN + ' SET \
-            dt=%s, nameset=%s, dtbegin=%s, dtend=%s WHERE userid=%s '
-        print("query  =", query)
-        cur.execute(query, (dt, nameset, dtbegin, dtend, userid,))
-        conn.commit()
-
-    # TB_PT_WEEKLY_PLAN_DATA에 있는 자료 모두 삭제 후 삽입
-    query = 'DELETE FROM ' + TB_PT_WEEKLY_PLAN_DATA + ' WHERE userid=%s '
-    print('query = ', query)
-    cur.execute(query, (userid,))
-    conn.commit()            
-
-    dayarr = list(weeklyplan.keys())    #['월요일', '화요일']
-    for day in dayarr:      # {"조조":[{"ptid":"01142", "param1":"32.5", ..., "오전":[{"ptid":}]
-        print('day = ', day)
-        adayplan = weeklyplan[day]
-        print('adayplan = ', adayplan)
-        dayofweek = str(DAYOFWEEK[day])
-        onermpercent = adayplan.pop('onermpercent', None)
-        if onermpercent == '': onermpercent = None
-
-        dayplan_timesarr = list(adayplan.keys())     #["onermpercent", '조조', '오전']
-        print(dayplan_timesarr)
-        for timestr in dayplan_timesarr:    #['조조', '오전']
-            print('timesttr = ', timestr)                
-            daytime = str(DAYTIME[timestr])
-            adaytimeplan = adayplan[timestr]     # [{"ptid":"01142", "param1":"32.5", "param2":"10", "param3":3}, { }]
-            print('adaytimeplan = ', adaytimeplan)
-            for aplan in adaytimeplan:       # {"ptid":"01142", "param1":"32.5", "param2":"10", "param3":3}
-                if len(aplan.keys()) == 0: continue
-                print('aplan = ', aplan)
-                ptid = aplan['ptid']
-                #param1 = aplan.get('param1', None)  # param1 is a string
-                param1 = getOrIfBlank2None(aplan, 'param1')  # param1 is a string
-                param2 = getOrIfBlank2None(aplan, 'param2')  # param2 is a string
-                param3 = getOrIfBlank2None(aplan, 'param3')  # param3 is a string
-
-                query = 'INSERT INTO ' + TB_PT_WEEKLY_PLAN_DATA + \
-                    ' (userid, dayofweek, pttime, ptid, onermpercent, param1, param2, param3) \
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s)'
-                print('query = ', query)
-                cur.execute(query, (userid, dayofweek, daytime, ptid, onermpercent, \
-                    param1, param2, param3))
-                conn.commit()
-
-    #dummy
-    data = {'result':'Y'} 
-    res = json.dumps(data, ensure_ascii=False).encode('utf8')
-    print("response data = ", data)
-    #return Response(res, content_type='application/json; charset=utf-8')
-
-    print(data)
-    #return {'result': result}
-
-''''''
-# /temporary post
-data = {"userid":"김코치", "nameset":["홍길동", "홍길동A", "김태권"],
-    "dtbegin":'2021-03-22', "dtend":"2021-04-05", 
-    'weeklyplan':{
-        "월요일":{"onermpercent":"70",
-            "조조":[{"ptid":"02001", "param1":32.5, "param2":10, "param3":3}, { }], 
-            "오전":[{"ptid":"00001", "param1":33.5, "param2":10, "param3":3}, { }], 
-            "오후":[ ], "야간": [ ]}, 
-        "화요일":{"onermpercent":"80",            
-            "조조":[{"ptid":"03001", "param1":40.5, "param2":5, "param3":3}, { }], 
-            "오전":[{"ptid":"00001", "param1":33.5, "param2":10, "param3":3}, { }], 
-            "오후":[ ], "야간": [ ]}, 
-        "수요일":{"조조":[ ], "오전":[ ], "오후":[ ], "야간": [ ]}, 
-        "목요일":{"조조":[ ], "오전":[ ], "오후":[ ], "야간": [ ]}, 
-        "금요일":{"조조":[ ], "오전":[ ], "오후":[ ], "야간": [ ]}, 
-        "토요일":{"조조":[ ], "오전":[ ], "오후":[ ], "야간": [ ]}}}
-
-print("\ntemporary post ================================> ")
-print('data = ', data)
-#print(temporary_post(data))
-res = requests.post(URL+'/temporary', json=data, headers=headers)
-print('>>>>>>> /temporary post 계획임시저장:', res.text)
-
-
-# /temporary get
-params = {'userid': '김코치'} 
-print("\ntemporary get ================================> ")
-print('params = ', params)
-#print(temporary_get(params['userid']))
-res = requests.get(URL+'/temporary', params=params)
-print('>>>>>> /temporary get 임시저장 계획 가져오기: ', res.text)
-
-params = {'userid': '김치'} 
-print("\ntemporary get ================================> ")
-print('params = ', params)
-#print(temporary_get(params['userid']))
-res = requests.get(URL+'/temporary', params=params)
-print('>>>>>> /temporary get 임시저장 계획 가져오기 - 없는 코치: ', res.text)
-
-exit(0)
-
-''' '''
-
-##################################################################################################
-def daterange(start_date, end_date):
-    for n in range(int((end_date - start_date).days + 1)):
-        yield start_date + timedelta(n)
-
-def getUserid(cur, name):
-    query = 'SELECT userid FROM ' + TB_USER + ' WHERE name=%s '
-    cur.execute(query, (name,))
-    r = cur.fetchone()
-    return r[0] if r != None else None
-
-
-def ptPlanWeekly_post(datain):
-    userid = datain.get('userid')
-    nameset = datain.get('nameset')
-    dtbegin = datain.get('dtbegin')
-    dtend = datain.get('dtend')
-    weeklyplan = datain.get('weeklyplan')
-
-    # dtbegin~dtend 사이 각 요일에 해당하는 날짜에 데이터 추가/갱신
-    print("date = %s ~ %s" % (dtbegin, dtend))
-    date_begin = datetime.datetime.strptime(dtbegin, "%Y-%m-%d").date()  
-    date_end = datetime.datetime.strptime(dtend, "%Y-%m-%d").date()
-    # 날자 검증
-    if date_begin > date_end:
-        date_temp = date_end
-        date_end = date_begin
-        date_begin = date_temp
-    print(date_begin, date_end)
-
-    playerset = []  # userid set
-    for name in nameset:
-        id = getUserid(cur, name)
-        if id != None: playerset.append(id)
-    #
-    print('playerset', playerset)
-    for dt in daterange(date_begin, date_end):
-        dayofweek = str(dt.weekday())   # '0' ~ '5'
-        dtstr = date2str(dt)
-        dayofweekstr = DAYOFWEEK2STR[dayofweek] #'월요일'
-        adayplan = weeklyplan.get(dayofweekstr)
-        if adayplan == None: continue
-
-        for playerid in playerset:
-            # 해당 일자의 기존 계획은 모두 삭제
-            query = 'DELETE FROM ' + TB_PT_WEEKLY_PERSONAL + ' WHERE userid=%s and dt=%s '
-            print('query = ', query)
-            cur.execute(query, (playerid, dtstr,))
-            conn.commit()  
-
-        onermpercent = adayplan.pop('onermpercent', None)
-        if onermpercent != None: onermpercent = str(onermpercent)
-
-        dayplan_timesarr = list(adayplan.keys())     #["onermpercent", '조조', '오전']
-        print(dayplan_timesarr)
-        for timestr in dayplan_timesarr:    #['조조', '오전']        
-            print('timesttr = ', timestr)                
-            daytime = str(DAYTIME[timestr]) #'1', 
-            adaytimeplan = adayplan[timestr]     # [{"ptid":"01142", "param1":"32.5", "param2":"10", "param3":3}, { }]
-            print('adaytimeplan = ', adaytimeplan)
-            for aplan in adaytimeplan:       # {"ptid":"01142", "param1":"32.5", "param2":"10", "param3":3}
-                if len(aplan.keys()) == 0: continue
-                print('aplan = ', aplan)
-                ptid = aplan['ptid']
-                param1 = aplan.get('param1', None)  # param1 is a string
-                if param1 != None: param1 = str(param1)
-                param2 = aplan.get('param2', None)
-                if param2 != None: param2 = str(param2)
-                param3 = aplan.get('param3', None)
-                if param3 != None: param3 = str(param3)
-
-                for playerid in playerset:
-                    # 해당 일자의 기존 계획은 모두 삭제
-                    query = 'DELETE FROM ' + TB_PT_WEEKLY_PERSONAL + ' WHERE userid=%s and dt=%s and dayofweek=%s and pttime=%s '
-                    print('query = ', query)
-                    cur.execute(query, (playerid, dtstr, dayofweek, daytime,))
-                    conn.commit()  
-
-                    query = 'SELECT * FROM ' + TB_PT_WEEKLY_PERSONAL + \
-                        ' WHERE userid=%s and dt=%s and dayofweek=%s and pttime=%s and ptid=%s'
-                    print('query = ', query)
-                    cur.execute(query, (playerid, dtstr, dayofweek, daytime, ptid))
-                    r = cur.fetchone()
-                    print('record = ', r)
-                    if r == None:
-                        # insert
-                        query = 'INSERT INTO ' + TB_PT_WEEKLY_PERSONAL + \
-                            ' (userid, dt, dayofweek, onermpercent, pttime, ptid, param1, param2, param3, useridcoach) \
-                            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) '
-                        print("query  = ", query)
-                        print(playerid, dtstr, dayofweek, onermpercent, daytime, ptid, param1, param2, param3, userid)
-                        cur.execute(query, (playerid, dtstr, dayofweek, onermpercent, daytime, ptid, param1, param2, param3, userid,))
-                        conn.commit()
-                    else:
-                        #update - 실제는 update 할 것 없을 것 (사용되지 않는 코드)
-                        assert(False)
-                        query = 'UPDATE ' + TB_PT_WEEKLY_PERSONAL + ' SET \
-                            onermpercent=%s, param1=%s, param2=%s, param3=%s, useridcoach=%s \
-                            WHERE  userid=%s and dt=%s and dayofweek=%s and pttime=%s and ptid=%s '
-                        print("query  =", query)
-                        cur.execute(query, (onermpercent, param1, param2, param3, userid, playerid, dtstr, dayofweek, daytime, ptid,))
-                        conn.commit()
-
-    #dummy
-    data = {'result':'Y'} 
-    res = json.dumps(data, ensure_ascii=False).encode('utf8')
-    print("response data = ", data)
-    return data
-    #return Response(res, content_type='application/json; charset=utf-8')
-
-
-# /weekly post
-data = {"userid":"박코치", "nameset":["홍길동", "홍길동a", "김태권"],
-    "dtbegin":'2021-05-06', "dtend":"2021-05-07", 
-    'weeklyplan':{
-        "월요일":{"onermpercent":"70",
-            "조조":[{"ptid":"02001", "param1":'32.5', "param2":'10', "param3":'3'}, { }], 
-            "오전":[{"ptid":"00001", "param2":10, "param3":'3'},], 
-            "오후":[ ], }, 
-        "화요일":{"onermpercent":"80",            
-            "조조":[{"ptid":"03001", "param1":40.5, "param2":5, "param3":3}, { }], 
-            "오전":[{"ptid":"00001", "param1":33.5, "param2":10, "param3":3}, { }], 
-            "오후":[ ], "야간": [ ]}, 
-        "수요일":{"조조":[ ], "오전":[ ], "오후":[ ], "야간": [ ]}, 
-        "목요일":{"조조":[ ], "오전":[ ], "오후":[ ], "야간": [ ]}, 
-        "금요일":{"onermpercent":"80",            
-            "조조":[{"ptid":"03001", "param1":40.5, "param2":5, "param3":3}, { }], 
-            "오전":[{"ptid":"00001", "param1":33.5, "param2":10, "param3":3}, { }], 
-            "오후":[ ], "야간": [ ]}, 
-        "토요일":{"조조":[ ], "오전":[ ], "오후":[ ], "야간": [ ]}}}
-
-print("\nptPlanWeekly_post 1 ================================> ")
-print(" data = ", data)
-#print(ptPlanWeekly_post(data))
-res = requests.post(URL+'/weekly', json=data, headers=headers)
-print(' >>>>>>> /weekly post 트레이닝 계획 완료/반영 :', res.text)
-
-
-data = {"userid":"박코치", "nameset":["홍길동", "홍길동A", "김태권"],
-    "dtbegin":'2021-05-05', "dtend":"2021-05-08", 
-    'weeklyplan':{
-        "월요일":{"onermpercent":"70",
-            "조조":[{"ptid":"00002", "param1":'32.5', "param2":'10', "param3":'3'}, 
-                {"ptid":"00001", "param2":10, "param3":'3'}], 
-            "오전":[{"ptid":"00001", "param2":10, "param3":'3'},], 
-            "오후":[ ], }, 
-        "목요일":{"onermpercent":"80",            
-            "조조":[{"ptid":"03001", "param1":40.5, "param2":5, "param3":3}, { }], 
-            "오전":[{"ptid":"00001", "param1":33.5, "param2":10, "param3":3}, { }], 
-            "오후":[ ], "야간": [ ]}, 
-        "금요일":{"onermpercent":"70",            
-            "오전":[{"ptid":"00021", "param1":33.5, "param2":10, "param3":3}, { }]}, 
-        "토요일":{"onermpercent":"70",            
-            "오전":[{"ptid":"00015", "param1":33.5, "param2":10, "param3":3}, { }]},}}
-
-print("\nptPlanWeekly_post 2 ================================> ")
-#print(ptPlanWeekly_post(data))
-res = requests.post(URL+'/weekly', json=data, headers=headers)
-print('\n>>>>>>> /weekly post 트레이닝 계획 완료/반영(토요일): 없는 선수 포함', res.text)
-''' 
-
-'''
-##################################################################################################
-def weekly_get(datain):
-
-    userid = datain.get('userid')
-    name = datain.get('name')
-    dtbegin = datain.get('dtbegin')
-    dtend = datain.get('dtend')
-
-    # dtbegin 은 월요일로 한정하지 않음.
-    # 기간이 1주 이상일 경우를 고려하지 않음
-
-    playerid = getUserid(cur, name)
-    # dtbegin~dtend 사이 
-    print("date = %s ~ %s" % (dtbegin, dtend))
-    date_begin = datetime.datetime.strptime(dtbegin, "%Y-%m-%d").date()  
-    date_end = datetime.datetime.strptime(dtend, "%Y-%m-%d").date()
-    # 날자 검증
-    if date_begin > date_end:
-        date_temp = date_end
-        date_end = date_begin
-        date_begin = date_temp
-    print(date_begin, date_end)
-
-    weeklyplan = {}
-    for dt in daterange(date_begin, date_end):
-        dayofweek = str(dt.weekday())   # '0' ~ '5'
-        dayofweekstr = DAYOFWEEK2STR[dayofweek]
-        weeklyplan[dayofweekstr] = {}
-
-        dtstr = date2str(dt)
-        
-        query = 'SELECT * FROM ' + TB_PT_WEEKLY_PERSONAL + \
-            ' WHERE userid=%s and dt=%s '
-        print('query = ', query)
-        cur.execute(query, (playerid, dtstr, ))
-        records = cur.fetchall()
-        print(records)
-        adayplan = {'onermpercent':''}
-
-        for r in records:
-            onermpercent = str(r[13]) if r[13] != None else ''
-            adayplan['onermpercent'] = onermpercent     # 모든 ptid에 대하여 동일한 것으로 가정함 
-            pttime = str(r[4])      # '1'
-            pttimestr = DAYTIME2STR[pttime]
-            if adayplan.get(pttimestr) == None:
-                adayplan[pttimestr] = []
-            ptid = r[5]
-            ptname = ptid2ptname(cur, ptid)
-            param1 = (r[6])
-            param2 = (r[7])
-            param3 = (r[8])
-            if param1 != None: param1 = str(param1)
-            if param2 != None: param2 = str(param2)
-            if param3 != None: param3 = str(param3)
-
-            aplan = {'ptid':ptid, 'ptnam':ptname, 'param1':param1, 'param2':param2, 'param3':param3}
-
-            if adayplan.get(pttimestr) == None:
-                adayplan[pttimestr] = []           
-            adayplan[pttimestr].append(aplan)
-            print('adayplan[pttimestr] 2 = ', adayplan[pttimestr])
-
-        weeklyplan[dayofweekstr] = adayplan
-        print('weeklyplan 2 = ', weeklyplan)
-
-    data = {'result':'Y', 'name':name, 'dtbegin':dtbegin, 'dtend':dtend, 'weeklyplan':weeklyplan} 
-
-
-    return data
-
-
-# /personal-weekly get
-params = {"userid":"박코치", "name":"홍길동", "dtbegin":'2021-05-03', "dtend":"2021-05-08"}
-print("\nPtPlanPersonalWeekly_get 1 ================================> \n params = ", params)
-#print(weekly_get(params))
-res = requests.get(URL+'/personal-weekly', params=params)
-print(' >>>>>>> /personal-weekly get 홍길동의 선택된 1주 트레이닝 계획:', res.text)
-
-
-params = {"userid":"박코치", "name":"홍길동a", "dtbegin":'2021-05-10', "dtend":"2021-05-15"}
-print("\nPtPlanPersonalWeekly_get 2 ================================>  \n params = ", params)
-#print(weekly_get(params))
-res = requests.get(URL+'/personal-weekly', params=params)
-print('>>>>>>> /personal-weekly get 데이터 없는 경우 :', res.text)
-
-exit(0)
-''' '''
-
-##################################################################################################
-# /personal-weekly post
-
-def weekly_post(datain):
-    userid = datain.get('userid')
-    name = datain.get('name')
-    dtbegin = datain.get('dtbegin')
-    dtend = datain.get('dtend')
-    weeklyplan = datain.get('weeklyplan')
-
-    playerid = getUserid(cur, name)
-
-    # dtbegin~dtend 사이 각 요일에 해당하는 날짜에 데이터 추가/갱신
-    print("date = %s ~ %s" % (dtbegin, dtend))
-    date_begin = datetime.datetime.strptime(dtbegin, "%Y-%m-%d").date()  
-    date_end = datetime.datetime.strptime(dtend, "%Y-%m-%d").date()
-    # 날자 검증
-    if date_begin > date_end:
-        date_temp = date_end
-        date_end = date_begin
-        date_begin = date_temp
-    print(date_begin, date_end)
-
-    # 해당일자 데이이터를 삭제한 후 추가해야 한다.(업데이트 아님)
-    for dt in daterange(date_begin, date_end):
-        dayofweek = str(dt.weekday())   # '0' ~ '5'
-        dtstr = date2str(dt)
-        dayofweekstr = DAYOFWEEK2STR[dayofweek] #'월요일'
-
-        print("=====DAY = ", dt, dayofweekstr)
-
-        # 기존 데이터 삭제
-        query = 'DELETE FROM ' + TB_PT_WEEKLY_PERSONAL + ' WHERE userid=%s and dt=%s '
-        print('query = ', query)
-        cur.execute(query, (playerid, dtstr))
-        conn.commit()  
-
-        adayplan = weeklyplan.get(dayofweekstr)
-        print('adayplan', adayplan)
-        if adayplan == None: continue
-
-        onermpercent = adayplan.pop('onermpercent', None)
-        if onermpercent != None: onermpercent = str(onermpercent)
-
-        dayplan_timesarr = list(adayplan.keys())     #["onermpercent", '조조', '오전']
-        print(dayplan_timesarr)
-        for timestr in dayplan_timesarr:    #['조조', '오전']        
-            print('===========timesttr = ', timestr)                
-            daytime = str(DAYTIME[timestr]) #'1', 
-            adaytimeplan = adayplan[timestr]     # [{"ptid":"01142", "param1":"32.5", "param2":"10", "param3":3}, { }]
-            print('adaytimeplan = ', adaytimeplan)
-            for aplan in adaytimeplan:       # {"ptid":"01142", "param1":"32.5", "param2":"10", "param3":3}
-                if len(aplan.keys()) == 0: continue
-                print('aplan = ', aplan)
-                ptid = aplan['ptid']
-                print('==================ptid', ptid)
-                param1 = aplan.get('param1', None)  # param1 is a string
-                if param1 != None: param1 = str(param1)
-                param2 = aplan.get('param2', None)
-                if param2 != None: param2 = str(param2)
-                param3 = aplan.get('param3', None)
-                if param3 != None: param3 = str(param3)
-
-                # insert
-                query = 'INSERT INTO ' + TB_PT_WEEKLY_PERSONAL + \
-                    ' (userid, dt, dayofweek, onermpercent, pttime, ptid, param1, param2, param3, useridcoach) \
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) '
-                print("query  = ", query)
-                print(playerid, dtstr, dayofweek, onermpercent, daytime, ptid, param1, param2, param3, userid)
-                cur.execute(query, (playerid, dtstr, dayofweek, onermpercent, daytime, ptid, param1, param2, param3, userid,))
-                conn.commit()
-
-
-data = {"userid":"박코치", "name":"홍길동",
-    "dtbegin":'2021-03-22', "dtend":"2021-04-05", 
-    'weeklyplan':{
-        "월요일":{"onermpercent":60,"조조":[{"ptid":"02001", "param1":32.5, "param2":10, "param3":3}, { }], "오전":[ ], "오후":[ ], "야간": [ ]}, 
-        "화요일":{"onermpercent":70,"조조":[ ], "오전":[ ], "오후":[ ], "야간": [ ]}, 
-        "수요일":{"onermpercent":70,"조조":[ ], "오전":[ ], "오후":[ ], "야간": [ ]}, 
-        "목요일":{"조조":[ ], "오전":[ ], "오후":[ ], "야간": [ ]}, 
-        "금요일":{"조조":[ ], "오전":[ ], "오후":[ ], "야간": [ ]}, 
-        "토요일":{"조조":[ ], "오전":[ ], "오후":[ ], "야간": [ ]}}}
-
-data = {"userid":"박코치", "name":"홍길동",
-    "dtbegin":'2021-05-03', "dtend":"2021-05-08", 
-    'weeklyplan':{
-        "월요일":{"onermpercent":"70",
-            "조조":[{"ptid":"00002", "param1":'32.5', "param2":'10', "param3":'3'}, 
-                {"ptid":"00001", "param2":10, "param3":'3'}], 
-            "오전":[{"ptid":"00001", "param2":10, "param3":'3'},], 
-            "오후":[ ], }, 
-        "목요일":{"onermpercent":"80",            
-            "조조":[{"ptid":"02001", "param1":40.5, "param2":5, "param3":3}, { }], 
-            "오후":[ ], "야간": [ ]}, 
-        "금요일":{"onermpercent":"70",            
-            "오전":[{"ptid":"00001", "param1":33.5, "param2":10, "param3":3}, { }],
-            "오후":[{"ptid":"03003", "param1":33.5, "param2":10, "param3":3}, { }],            
-            }, 
-        "토요일":{"onermpercent":"70",            
-            "오전":[{"ptid":"00001", "param1":33.5, "param2":10, "param3":3}, { }]},}}
-
-print("\n PtPlanPersonalWeekly_post 1 ================================> ")
-print('  data = ', data)
-#print(weekly_post(data))
-res = requests.post(URL+'/personal-weekly', json=data, headers=headers)
-print('>>>>>>> /personal-weekly post 선수 1명 선택된 1주 트레이닝 계획을 저장:', res.text)
-'''
-
-#exit(0)
 
 ##################################################################################################
 
@@ -1383,3 +1015,4 @@ with open(filename, 'rb') as img:
 #                   headers={'Content-Type': multipart_data.content_type})
 
 exit(0)
+'''

@@ -69,6 +69,12 @@ logger.addHandler(ch)
 FILEPATH_STATIC_IMAGE = 'static/img/'
 FILEPATH_UPLOAD_INGESTION_IMAGE = 'static/img/ingestphotoupload'
 
+# 측위자원 upload file path
+FILEPATH_LOCDATA_PATH = "e:/LOCDATA/COLLECTION"
+FILEPATH_MAPDATA_PATH = "e:/LOCDATA/MAPDATA"
+
+data_directory = FILEPATH_LOCDATA_PATH
+
 ##########################################
 # Postgresql API
 #host = 'dev.h4tech.co.kr'
@@ -95,6 +101,12 @@ TB_LOC_MODEL = 'tb_loc_model'	#영상측위 학습 모델 관리
 
 #########################################################################################
 
+def datadirectory_read(config):
+    global data_directory
+    
+    data_directory = config['system']['datadirectory']
+    print('data_directory :', data_directory)
+
 def dbconfig_read(config):
     global db_ip, db_port, db_name, db_pw
     
@@ -117,12 +129,14 @@ def config_read():
 
     # 설정파일의 색션 확인
     # config.sections())
+    datadirectory_read(config)
     dbconfig_read(config)
     #kafkaconfig_read(config)
     
 config_read()
 host = db_ip
 port = db_port
+print('data_directory :' + data_directory)
 print('db ip:port = {}:{}'.format(db_ip, db_port))
 #print('kafka broker = ', kafka_url)
 
@@ -611,15 +625,15 @@ class CollectGetDatasetList(Resource):
         args = parser.parse_args()
         logger.info('args = {}'.format(args))
         site_id = args.get('site_id', '%')
-        if site_id == '*': site_id = '%'
+        if site_id == '*' or site_id == None: site_id = '%'
         logger.info("site_id = " + site_id)
         
         building_id = args.get('building_id', '%')
-        if building_id == '*': building_id = '%'
+        if building_id == '*' or building_id == None: building_id = '%'
         logger.info("building_id = " + building_id)
         
         floor = args.get('floor', '%')
-        if floor == '*': floor = '%'
+        if floor == '*' or floor == None: floor = '%'
         logger.info("floor = " + floor)        
         
         cur = connectDBIfClosed()
@@ -671,15 +685,15 @@ class CollectPPGetDatasetList(Resource):
         args = parser.parse_args()
         logger.info('args = {}'.format(args))
         site_id = args.get('site_id', '%')
-        if site_id == '*': site_id = '%'
+        if site_id == '*' or site_id == None: site_id = '%'
         logger.info("site_id = " + site_id)
         
         building_id = args.get('building_id', '%')
-        if building_id == '*': building_id = '%'
+        if building_id == '*' or building_id == None: building_id = '%'
         logger.info("building_id = " + building_id)
         
         floor = args.get('floor', '%')
-        if floor == '*': floor = '%'
+        if floor == '*' or floor == None: floor = '%'
         logger.info("floor = " + floor)        
         
         cur = connectDBIfClosed()
@@ -731,12 +745,12 @@ class CollectGetDatasetFilter(Resource):
         args = parser.parse_args()
         logger.info('args = {}'.format(args))
         site_id = args.get('site_id', '%')
-        if site_id == '*': site_id = '%'
+        if site_id == '*' or site_id == None: site_id = '%'
         site_id = '%'   # 우선 all 로 고정
         logger.info("site_id = " + site_id)
         
         # building_id = args.get('building_id', '%')
-        # if building_id == '*': building_id = '%'
+        # if building_id == '*' or building_id == None: building_id = '%'
         # logger.info("building_id = " + building_id)      
         
         cur = connectDBIfClosed()
@@ -1024,12 +1038,12 @@ class TrainingGetDatasetFilter(Resource):
         args = parser.parse_args()
         logger.info('args = {}'.format(args))
         site_id = args.get('site_id', '%')
-        if site_id == '*': site_id = '%'
+        if site_id == '*' or site_id == None: site_id = '%'
         site_id = '%'   # 우선 all 로 고정
         logger.info("site_id = " + site_id)
         
         # building_id = args.get('building_id', '%')
-        # if building_id == '*': building_id = '%'
+        # if building_id == '*' or building_id == None: building_id = '%'
         # logger.info("building_id = " + building_id)      
         
         cur = connectDBIfClosed()
@@ -1081,15 +1095,15 @@ class TrainingGetDatasetList(Resource):
         args = parser.parse_args()
         logger.info('args = {}'.format(args))
         site_id = args.get('site_id', '%')
-        if site_id == '*': site_id = '%'
+        if site_id == '*' or site_id == None: site_id = '%'
         logger.info("site_id = " + site_id)
         
         building_id = args.get('building_id', '%')
-        if building_id == '*': building_id = '%'
+        if building_id == '*' or building_id == None: building_id = '%'
         logger.info("building_id = " + building_id)
         
         floor = args.get('floor', '%')
-        if floor == '*': floor = '%'
+        if floor == '*' or floor == None: floor = '%'
         logger.info("floor = " + floor)        
         
         cur = connectDBIfClosed()
@@ -1234,15 +1248,15 @@ class TrainingGetModelList(Resource):
         args = parser.parse_args()
         logger.info('args = {}'.format(args))
         site_id = args.get('site_id', '%')
-        if site_id == '*': site_id = '%'
+        if site_id == '*' or site_id == None: site_id = '%'
         logger.info("site_id = " + site_id)
         
         building_id = args.get('building_id', '%')
-        if building_id == '*': building_id = '%'
+        if building_id == '*' or building_id == None: building_id = '%'
         logger.info("building_id = " + building_id)
         
         floor = args.get('floor', '%')
-        if floor == '*': floor = '%'
+        if floor == '*' or floor == None: floor = '%'
         logger.info("floor = " + floor)        
         
         cur = connectDBIfClosed()
@@ -1292,7 +1306,8 @@ class TrainingDeleteDataset(Resource):
         logger.info('args = {}'.format(args))
         idx = args.get('idx')
         logger.info("idx = " + idx)
-           
+        if idx == '':
+            makeErrorResponseMsgResponse('idx error')
         
         cur = connectDBIfClosed()
         query = 'SELECT dirpath FROM '\
@@ -1389,15 +1404,15 @@ class CollectStatusGetJob(Resource):
         args = parser.parse_args()
         logger.info('args = {}'.format(args))
         site_id = args.get('site_id', '%')
-        if site_id == '*': site_id = '%'
+        if site_id == '*' or site_id == None: site_id = '%'
         logger.info("site_id = " + site_id)
         
         # building_id = args.get('building_id', '%')
-        # if building_id == '*': building_id = '%'
+        # if building_id == '*' or building_id == None: building_id = '%'
         # logger.info("building_id = " + building_id)
         
         # floor = args.get('floor', '%')
-        # if floor == '*': floor = '%'
+        # if floor == '*' or floor == None: floor = '%'
         # logger.info("floor = " + floor)        
         
         # cur = connectDBIfClosed()
@@ -1450,7 +1465,8 @@ class CollectStatusGetMapdata(Resource):
         logger.info('args = {}'.format(args))
         idx = args.get('idx')
         logger.info("idx = " + idx)
-           
+        if idx == '':
+            makeErrorResponseMsgResponse('idx error')
         
         cur = connectDBIfClosed()
         query = 'SELECT idx, scenario_name, site_id, building_id, floor, route_wp, dt_start, dt_end, gt, user_name, phonemodel FROM '\
@@ -1509,7 +1525,8 @@ class CollectStatusGetStatus(Resource):
         logger.info('args = {}'.format(args))
         idx = args.get('idx')
         logger.info("idx = " + idx)
-           
+        if idx == '':
+            makeErrorResponseMsgResponse('idx error')
         
         cur = connectDBIfClosed()
         query = 'SELECT idx, scenario_name, site_id, building_id, floor, route_wp, dt_start, dt_end, gt, user_name, phonemodel FROM '\
@@ -1571,7 +1588,8 @@ class CollectStatusGetStatusTraj(Resource):
         logger.info('args = {}'.format(args))
         idx = args.get('idx')
         logger.info("idx = " + idx)
-           
+        if idx == '':
+            makeErrorResponseMsgResponse('idx error')
         
         cur = connectDBIfClosed()
         query = 'SELECT idx, scenario_name, site_id, building_id, floor, route_wp, dt_start, dt_end, gt, user_name, phonemodel FROM '\
