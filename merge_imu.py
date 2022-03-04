@@ -3,6 +3,7 @@
     2022. 1. H4Tech
         LocCollect 앱에서 수집한 ARCore and IMU data : pose.csv, acce.csv, gyro.csv, pres.csv, magn.csv 
         data를 동일한 간격을 데이터로 통합하여 생성
+        22/3/2 most recent value interpolation 으로 추가 변경함
 '''
 
 import time, os, sys
